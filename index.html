@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>📓 Live Class Notes</title>
+<!-- Ensure full responsiveness on all devices -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Firebase & Confetti Libraries -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+<style>
+/* Base Styles & Typography */
+body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; display: flex; flex-direction: column; height: 100vh; }
+header { background: #1f2d3d; color: #fff; padding: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+header .title { font-size: 20px; font-weight: bold; }
+header button { color: #fff; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; margin-left: 8px; transition: background 0.2s ease, transform 0.1s; }
+header button:active { transform: scale(0.98); }
+.container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.mainContent { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+/* Sidebar (Info/Chat/Admin) */
+#infoSidebar {
+    display: flex;
+    flex-direction: column;
+    width: 300px; /* Default desktop width */
+    min-width: 250px;
+    padding: 10px;
+    background: #ffffff;
+    border-left: 1px solid #ccc;
+    transition: all 0.3s ease;
+    overflow-y: auto;
+    z-index: 50; /* Ensure it floats above the editor if needed */
+}
+
+/* Critical: When hidden, collapse completely */
+#infoSidebar.hidden-panel {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    border-left: none;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+/* Editor Area */
+#editorContainer { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#editor { 
+    flex: 1; background: #fff; padding: 16px; 
+    overflow-y: auto; font-size: 18px; line-height: 1.6; 
+    white-space: pre-wrap; border-radius: 8px; margin: 4px;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+}
+#editor.editable { border: 2px solid #10b981; padding: 14px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+#yourPermission { margin: 4px 10px; padding: 4px; font-size: 14px; }
+
+/* Chat Box */
+#chatBox { border-top: 1px solid #e5e7eb; background: #fff; padding: 10px; height: 120px; min-height: 80px; overflow-y: auto; font-size: 15px; }
+#chatInput { display: flex; gap: 8px; padding: 10px; background: #e5e7eb; align-items: center; }
+#chatInput input { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+#chatInput button { background: #4f46e5; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
+#chatInput button:hover { background: #3730a3; }
+#emojiBtn { background: #fcd34d !important; color: #1f2d3d !important; }
+
+/* Toolbar */
+#toolbar { display: flex; flex-direction: column; gap: 8px; background: #e0e7ff; padding: 12px; min-width: 80px; overflow-y: auto; transition: transform 0.3s ease; border-right: 1px solid #c3ccf5; }
+#toolbar.hidden { transform: translateX(-120%); }
+#toolbar button { background: #4f46e5; color: #fff; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 18px; box-shadow: 0 2px 3px rgba(0,0,0,0.1); }
+#toolbar button:hover { background: #3730a3; }
+#btnClear { background: #ef4444; }
+
+/* Sidebar Controls */
+#raiseHand { margin: 8px 0; padding: 10px 12px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+#raisedList, #permissionList { font-size: 14px; margin-top: 5px; color: #111; display: flex; flex-direction: column; gap: 8px; padding-left: 5px; }
+#raisedList div, #permissionList div { display: flex; gap: 8px; align-items: center; position: relative; padding: 4px; background: #f9fafb; border-radius: 4px; }
+.allowBtn, .declineBtn, .revokeBtn { padding: 4px 8px; border-radius: 5px; border: none; cursor: pointer; font-size: 12px; margin-left: auto; }
+.allowBtn { background: #10b981; color: white; }
+.declineBtn { background: #ef4444; color: white; }
+.revokeBtn { background: #6b7280; color: white; }
+.admin-btn { margin-top: 10px; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
+#clearHandsBtn { background: #ef4444; color: white; }
+#clearPermsBtn { background: #6b7280; color: white; }
+#chatLockDisplay { font-size: 14px; color: #ef4444; font-weight: bold; padding: 10px; text-align: center; display: none; }
+
+/* Collapsible Styling */
+.collapsible-header {
+    cursor: pointer;
+    background: #e0e7ff;
+    padding: 8px 12px;
+    margin-top: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 16px;
+    font-weight: bold;
+    color: #4f46e5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.collapsible-header:hover { background: #c3ccf5; }
+.collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
+.collapsible-content.expanded { max-height: 500px; padding: 8px 0; }
+.arrow { font-size: 1.2em; transition: transform 0.3s; }
+.collapsible-header.expanded .arrow { transform: rotate(90deg); }
+
+/* Role Modal */
+#roleModal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.modalCard { background: #fff; padding: 25px; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+.modalCard h3 { font-size: 1.5em; margin-bottom: 20px; color: #1f2d3d; }
+.row { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; justify-content: center; }
+.modalCard button { flex-grow: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+#btnTeacher { background: #f59e0b; color: white; }
+#btnStudent { background: #4f46e5; color: white; }
+#btnTeacher:hover { background: #d97706; }
+#btnStudent:hover { background: #3730a3; }
+#pwInput { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+#pwBlock label { display: block; text-align: left; font-weight: bold; margin-bottom: 5px; }
+
+/* Teacher Only Class (Default hidden) */
+.teacherOnly { display: none; }
+
+/* Mobile Optimizations (Below 640px) */
+@media (max-width: 640px) {
+    header { padding: 10px; flex-wrap: wrap; }
+    header button { margin-top: 5px; margin-left: 0; flex-basis: calc(33.33% - 8px); } /* Buttons wrap and take up space */
+    header .title { width: 100%; text-align: center; margin-bottom: 10px; }
+    
+    .mainContent { flex-direction: column; } /* Stack content vertically */
+
+    #infoSidebar {
+        /* On mobile, when visible, the sidebar should take up most of the screen */
+        position: absolute; 
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 85%; 
+        min-width: 85%;
+        box-shadow: -4px 0 10px rgba(0,0,0,0.2);
+        max-width: none;
+    }
+    #infoSidebar.hidden-panel {
+        width: 0;
+        min-width: 0;
+    }
+
+    #editorContainer { min-height: 50vh; }
+    #chatBox { height: 100px; }
+    #toolbar { 
+        position: absolute; 
+        top: 0; 
+        left: 0; 
+        bottom: 0;
+        width: 100px;
+        z-index: 60;
+        border-right: none;
+    }
+    #toolbar.hidden { transform: translateX(-100%); }
+    
+    #chatInput { padding: 8px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="confettiCanvas"></canvas>
+
+<header>
+  <div class="title">📓 Live Class Notes</div>
+  <div>
+    <!-- Button to toggle the Info Sidebar -->
+    <button id="toggleInfo" style="background:#059669;">📰 Show Info</button> 
+    <!-- Teacher-only buttons using class="teacherOnly" -->
+    <button id="toggleChatLock" class="teacherOnly" style="background:#f59e0b;">🔒 Lock Chat</button>
+    <button id="toggleToolbar" class="teacherOnly" style="background:#10b981;">☰ Tools</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="mainContent">
+
+    <!-- Teacher Toolbar (uses class="teacherOnly") -->
+    <div id="toolbar" class="hidden teacherOnly">
+      <button data-symbol="+">+</button>
+      <button data-symbol="−">−</button>
+      <button data-symbol="×">×</button>
+      <button data-symbol="÷">÷</button>
+      <button data-symbol="=">=</button>
+      <button data-symbol="√">√</button>
+      <button data-symbol="π">π</button>
+      <button data-symbol="^">^</button>
+      <button data-symbol="a/b">a/b</button>
+      <button data-symbol="Σ">Σ</button>
+      <button data-symbol="∫">∫</button>
+      <button data-symbol="θ">θ</button>
+      <button data-symbol="α">α</button>
+      <button data-symbol="β">β</button>
+      <button data-symbol="γ">γ</button>
+      <button data-symbol="Δ">Δ</button>
+      <button data-symbol="λ">λ</button>
+      <button data-symbol="μ">μ</button>
+      <button data-symbol="σ">σ</button>
+      <button data-symbol="∞">∞</button>
+      <button data-symbol="±">±</button>
+      <button data-symbol="≤">≤</button>
+      <button data-symbol="≥">≥</button>
+      <button id="btnClear">🗑 Clear</button>
+    </div>
+
+    <!-- MAIN EDITOR CONTAINER -->
+    <div id="editorContainer">
+        <div id="editor" contenteditable="false"><p style="color:#888;">Waiting for role selection...</p></div>
+        <div id="yourPermission" style="font-weight:bold;color:green;margin:4px 0;"></div>
+        
+        <!-- CHAT INPUT -->
+        <div id="chatLockDisplay"></div>
+        <div id="chatInput">
+          <input type="text" id="chatMessage" placeholder="Type a message..." autocorrect="off" autocomplete="off" spellcheck="false">
+          <button id="emojiBtn">😊</button>
+          <button id="sendChat">Send</button>
+        </div>
+    </div>
+
+    <!-- INFO SIDEBAR WRAPPER: Starts hidden -->
+    <div id="infoSidebar" class="hidden-panel"> 
+        <button id="raiseHand">🖐 Raise Hand</button> 
+        
+        <!-- RAISED HANDS COLLAPSIBLE PANEL (TEACHER ONLY) -->
+        <div id="raisedHandsHeader" class="collapsible-header teacherOnly">
+            <span>Raised Hands Queue</span>
+            <span class="arrow">▶</span>
+        </div>
+        <div id="raisedHandsContent" class="collapsible-content teacherOnly">
+            <div id="raisedList"></div>
+            <button id="clearHandsBtn" class="admin-btn">Clear Raised Hands</button>
+        </div>
+        
+        <!-- PERMISSIONS COLLAPSIBLE PANEL (TEACHER ONLY) -->
+        <div id="permissionsHeader" class="collapsible-header teacherOnly">
+            <span>Board Permissions & Stars</span>
+            <span class="arrow">▶</span>
+        </div>
+        <div id="permissionsContent" class="collapsible-content teacherOnly">
+            <div id="permissionList"></div>
+            <button id="clearPermsBtn" class="admin-btn">Revoke All Permissions</button>
+        </div>
+
+        <div id="chatBox"></div>
+        <!-- Emoji Picker location - hidden by default -->
+        <div id="emojiPicker"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Role Modal -->
+<div id="roleModal">
+  <div class="modalCard">
+    <h3>Select Role to Begin</h3>
+    <div class="row">
+      <button id="btnTeacher">Teacher</button>
+      <button id="btnStudent">Student</button>
+    </div>
+    <div id="pwBlock" style="display:none;margin-top:12px">
+      <label for="pwInput">Teacher Password:</label>
+      <input type="password" id="pwInput" placeholder="Enter password">
+      <div class="row">
+        <button id="btnEnter" style="background:#10b981; color: white;">Enter</button>
+        <button id="btnCancel" style="background:#6b7280; color: white;">Cancel</button>
+      </div>
+      </div>
+    </div>
+</div>
+
+<script>
+// Firebase config
+const firebaseConfig = {
+  apiKey:"AIzaSyCjivkTeBcbr-UnnkfMbIYX7_9Wxya5U04",
+  authDomain:"raheim-s-class.firebaseapp.com",
+  databaseURL:"https://raheim-s-class-default-rtdb.firebaseio.com",
+  projectId:"raheim-s-class",
+  storageBucket:"raheim-s-class.firebasestorage.app",
+  messagingSenderId:"576992270609",
+  appId:"1:576992270609:web:7441555f9299b8d42bd4b0",
+  measurementId:"G-MQZ68MPYH3"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Variables
+let isTeacher=false, userName="Student", userRole="Student";
+const editor=document.getElementById('editor');
+const toolbar=document.getElementById('toolbar');
+const toggleToolbar=document.getElementById('toggleToolbar');
+const toggleChatLock=document.getElementById('toggleChatLock');
+const toggleInfo=document.getElementById('toggleInfo'); 
+const infoSidebar=document.getElementById('infoSidebar'); 
+const chatBox=document.getElementById('chatBox');
+const chatInput=document.getElementById('chatInput');
+const chatMsg=document.getElementById('chatMessage');
+const chatLockDisplay=document.getElementById('chatLockDisplay');
+const emojiPicker=document.getElementById('emojiPicker');
+const raiseHandBtn=document.getElementById('raiseHand');
+const raisedList=document.getElementById('raisedList');
+const permissionList=document.getElementById('permissionList');
+const yourPermission=document.getElementById('yourPermission');
+const clearHandsBtn=document.getElementById('clearHandsBtn');
+const clearPermsBtn=document.getElementById('clearPermsBtn');
+const confettiCanvas=document.getElementById('confettiCanvas');
+const TEACHER_PASSWORD="raheimp100classstarts";
+
+// Helper function to show/hide teacher elements using the correct class selector
+function setTeacherUI(show) {
+    document.querySelectorAll('.teacherOnly').forEach(el => {
+        // Set display property based on the element type to ensure correct visibility
+        if (show) {
+            if (el.id === 'toolbar') {
+                el.style.display = 'flex'; // Toolbar is a flex column
+            } else if (el.tagName === 'BUTTON' || el.classList.contains('collapsible-header')) {
+                el.style.display = 'inline-block'; // Buttons and headers
+            } else {
+                el.style.display = 'block'; // Default block elements
+            }
+        } else {
+            el.style.display = 'none';
+        }
+    });
+    
+    // Manage Info Sidebar visibility for roles
+    if (show) {
+        // Teacher sees the sidebar open by default to access controls
+        infoSidebar.classList.remove('hidden-panel');
+        toggleInfo.textContent = '📰 Hide Info';
+    } else {
+        // Student sees the sidebar closed by default
+        infoSidebar.classList.add('hidden-panel');
+        toggleInfo.textContent = '📰 Show Info';
+    }
+    
+    // Manage visibility of student elements
+    raiseHandBtn.style.display = show ? 'none' : 'inline-block';
+}
+
+
+// --- INFO TOGGLE LOGIC ---
+toggleInfo.onclick = () => {
+    infoSidebar.classList.toggle('hidden-panel');
+    const isHidden = infoSidebar.classList.contains('hidden-panel');
+    toggleInfo.textContent = isHidden ? '📰 Show Info' : '📰 Hide Info';
+};
+
+// --- COLLAPSIBLE LOGIC ---
+function toggleCollapsible(headerId, contentId) {
+    const header = document.getElementById(headerId);
+    const content = document.getElementById(contentId);
+    
+    header.classList.toggle('expanded');
+    content.classList.toggle('expanded');
+}
+
+// Attach event listeners to the collapsible headers
+document.getElementById('raisedHandsHeader').onclick = () => {
+    toggleCollapsible('raisedHandsHeader', 'raisedHandsContent');
+};
+document.getElementById('permissionsHeader').onclick = () => {
+    toggleCollapsible('permissionsHeader', 'permissionsContent');
+};
+// -----------------------------
+
+
+// Utilities
+function getProfileEmoji(name){
+  if(name==="Teacher") return "👨‍🏫";
+  const baseName = name.split('_')[0]; 
+  const base=["✨","🚀","💡","🧠","🌱","🦉","🧩","🌟"], dec=["💻","📚","📐","📝","🔬"];
+  let hash=0;
+  for(let i=0;i<baseName.length;i++) hash+=baseName.charCodeAt(i);
+  return `${base[hash%base.length]}${dec[hash%dec.length]}`;
+}
+function launchConfetti(){
+  const myConfetti=confetti.create(confettiCanvas,{resize:true,useWorker:true});
+  myConfetti({particleCount:100,spread:70,origin:{y:0.6}});
+}
+
+// Load notes
+db.ref('notes').on('value',snap=>{
+  // Only update the editor if you are a student or if you are a teacher and contenteditable is false 
+  // (which shouldn't happen, but ensures read-only users always get the latest data)
+  if(!isTeacher || editor.contentEditable==="false"){
+    const data=snap.val();
+    editor.innerHTML=data?.content||"";
+  }
+});
+
+// Debounced editor updates (Only push changes if editable)
+let debounceTimer;
+editor.addEventListener('input',()=>{
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(()=>{
+    if(editor.contentEditable==="true"){
+      db.ref('notes').set({content:editor.innerHTML});
+    }
+  },300); 
+});
+
+// Toolbar buttons
+toolbar.querySelectorAll('button[data-symbol]').forEach(btn=>{
+  btn.onclick=()=>{
+    if(editor.contentEditable!=="true") return; // Only allow input if editable
+    editor.innerHTML+=btn.getAttribute('data-symbol');
+    db.ref('notes').set({content:editor.innerHTML}); 
+  };
+});
+document.getElementById('btnClear').onclick=()=>{
+    if(isTeacher){
+        editor.innerHTML='';
+        db.ref('notes').set({content:""});
+    }
+};
+toggleToolbar.onclick=()=>{toolbar.classList.toggle('hidden');};
+
+// Chat lock logic
+db.ref('chatStatus').on('value', snap => {
+  const isLocked = snap.val()===true;
+  if(isLocked){
+    chatInput.style.display='none';
+    chatLockDisplay.style.display='block';
+    chatLockDisplay.innerHTML='🚫 Chat is currently <b>PAUSED</b> by the teacher.'; 
+  }else{
+    chatLockDisplay.style.display='none';
+    chatInput.style.display='flex';
+  }
+  if(isTeacher){
+    toggleChatLock.textContent = isLocked?'🔓 Unlock Chat':'🔒 Lock Chat';
+    toggleChatLock.style.backgroundColor = isLocked?'#10b981':'#f59e0b';
+  }
+});
+toggleChatLock.onclick=()=>{
+  if(isTeacher){
+    db.ref('chatStatus').once('value', snap=>{
+      const isLocked = snap.val()===true;
+      db.ref('chatStatus').set(!isLocked);
+    });
+  }
+};
+
+// Chat functionality
+function appendChat(msg){
+  const div = document.createElement('div');
+  const displayName = msg.userName.split('_')[0]; 
+  div.innerHTML = `<b>${getProfileEmoji(msg.userName)} ${displayName}:</b> ${msg.text}`;
+  
+  // Scroll to bottom only if user is already near the bottom
+  const atBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
+  
+  chatBox.appendChild(div);
+  
+  if(atBottom) chatBox.scrollTop = chatBox.scrollHeight;
+}
+db.ref('chat').on('child_added', snap => appendChat(snap.val()));
+function sendChat(){
+    const text=chatMsg.value.trim();
+    if(text){
+        db.ref('chat').push({user:userRole,userName:userName,text:text});
+        chatMsg.value='';
+    }
+}
+document.getElementById('sendChat').onclick=sendChat;
+chatMsg.addEventListener('keypress',e=>{if(e.key==='Enter' && chatInput.style.display !== 'none') sendChat();});
+
+// Raise Hand functionality
+raiseHandBtn.onclick=()=>{
+    db.ref('raisedHands/'+userName).set(true);
+};
+
+db.ref('raisedHands').on('value',snap=>{
+  raisedList.innerHTML='';
+  const data=snap.val()||{};
+  Object.keys(data).forEach(name=>{
+    const row=document.createElement('div');
+    const displayName = name.split('_')[0];
+    row.innerHTML=`${getProfileEmoji(name)} <span>${displayName}</span>`;
+    if(isTeacher){
+      const allowBtn=document.createElement('button');
+      allowBtn.textContent='Allow'; allowBtn.className='allowBtn';
+      allowBtn.onclick=()=>{db.ref('permissions/'+name).set(true);db.ref('raisedHands/'+name).remove();launchConfetti();}
+      const declineBtn=document.createElement('button');
+      declineBtn.textContent='Decline'; declineBtn.className='declineBtn';
+      declineBtn.onclick=()=>db.ref('raisedHands/'+name).remove();
+      row.append(allowBtn, declineBtn);
+    }
+    raisedList.appendChild(row);
+  });
+  clearHandsBtn.style.display=(isTeacher && Object.keys(data).length>0)?'inline-block':'none';
+});
+clearHandsBtn.onclick=()=>{if(isTeacher) db.ref('raisedHands').set({});}
+
+// Permissions functionality
+db.ref("permissions").on("value",snap=>{
+  permissionList.innerHTML='';
+  const data=snap.val()||{};
+  Object.keys(data).forEach(name=>{
+    const row=document.createElement("div");
+    const displayName = name.split('_')[0];
+    row.innerHTML=`${getProfileEmoji(name)} <span class="star-student">${displayName} (Access)</span>`;
+    if(isTeacher){
+      const revokeBtn=document.createElement("button");
+      revokeBtn.textContent="Revoke"; revokeBtn.className="revokeBtn";
+      revokeBtn.onclick=()=>db.ref("permissions/"+name).remove();
+      row.append(revokeBtn);
+    }
+    permissionList.appendChild(row);
+  });
+  
+  // Student self-check for permission
+  if(userName!=="Teacher"){
+    if(data[userName]){
+        yourPermission.innerText="✅ You have board access"; 
+        editor.contentEditable="true"; 
+        editor.classList.add('editable');
+    }
+    else{
+        yourPermission.innerText=""; 
+        editor.contentEditable="false"; 
+        editor.classList.remove('editable');
+    }
+  }
+  clearPermsBtn.style.display=(isTeacher && Object.keys(data).length>0)?'inline-block':'none';
+});
+clearPermsBtn.onclick=()=>{if(isTeacher) db.ref("permissions").set({});}
+
+// Emoji Picker (simple toggle)
+document.getElementById('emojiBtn').onclick = () => {
+    // Note: The simple picker logic is omitted for brevity but the toggle remains
+    // A fully functional picker would require a list of emojis and selection logic.
+    // For now, it simply toggles visibility.
+    // emojiPicker.style.display = emojiPicker.style.display === 'flex' ? 'none' : 'flex';
+    // Instead of a picker, just allow a few simple emojis to be added for demonstration
+    const emojis = ["👍", "🔥", "💯", "👏", "💡", "❓", "✅"];
+    const text = chatMsg.value.trim();
+    chatMsg.value = text + " " + emojis[Math.floor(Math.random() * emojis.length)];
+    chatMsg.focus();
+};
+
+// Role modal logic
+const roleModal=document.getElementById('roleModal');
+document.getElementById('btnTeacher').onclick=()=>{document.getElementById('pwBlock').style.display='block';};
+document.getElementById('btnCancel').onclick=()=>{document.getElementById('pwBlock').style.display='none';};
+
+document.getElementById('btnEnter').onclick=()=>{
+  const pw=document.getElementById('pwInput').value;
+  if(pw===TEACHER_PASSWORD){
+    isTeacher=true;userRole="Teacher";userName="Teacher";
+    
+    // Setup Teacher UI
+    setTeacherUI(true);
+    
+    editor.contentEditable='true'; editor.classList.add('editable');
+    roleModal.style.display='none'; 
+    editor.innerHTML="<p>Welcome, Teacher! Start typing the lesson notes here...</p>"; 
+    // Clear password input
+    document.getElementById('pwInput').value = '';
+    
+    // Teacher sees lists expanded by default
+    document.getElementById('raisedHandsHeader').classList.add('expanded');
+    document.getElementById('raisedHandsContent').classList.add('expanded');
+    document.getElementById('permissionsHeader').classList.add('expanded');
+    document.getElementById('permissionsContent').classList.add('expanded');
+  } else {
+    // Using a custom modal/div instead of alert() for better user experience
+    const modalCard = document.querySelector('.modalCard');
+    modalCard.style.border = '2px solid red';
+    setTimeout(() => {
+        modalCard.style.border = 'none';
+    }, 1000);
+}
+};
+
+document.getElementById('btnStudent').onclick=()=>{
+  const namePrompt = prompt("Enter your name:")||"Student";
+  const baseName = namePrompt.trim().replace(/ /g, '_');
+  // Ensure unique username
+  userName = baseName + '_' + Math.floor(Math.random()*1000000); 
+  
+  isTeacher=false;userRole="Student";
+    
+    // Setup Student UI
+    setTeacherUI(false);
+
+  editor.contentEditable='false'; editor.classList.remove('editable');
+  roleModal.style.display='none'; 
+};
+</script>
+</body>
+</html>
