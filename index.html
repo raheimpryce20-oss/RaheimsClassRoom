@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>📓 Live Class Notes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+<style>
+body{margin:0;font-family:'Segoe UI',sans-serif;background:#f0f4f8;display:flex;flex-direction:column;height:100vh;}
+header{background:#1f2d3d;color:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;}
+header .title{font-size:20px;font-weight:bold;}
+header button{color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;margin-left:8px;}
+.container{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.mainContent{flex:1;display:flex;overflow:hidden;position:relative;}
+#toolbar{display:flex;flex-direction:column;gap:6px;background:#e0e7ff;padding:10px;min-width:80px;overflow-y:auto;transition: transform 0.3s ease;}
+#toolbar.hidden{transform:translateX(-120%);}
+#toolbar button{background:#4f46e5;color:#fff;border:none;padding:6px;border-radius:6px;cursor:pointer;font-size:18px;}
+#toolbar button:hover{background:#3730a3;}
+#btnClear{background:#ef4444;}
+#editor{flex:1;background:#fff;padding:12px;overflow-y:auto;font-size:18px;line-height:1.5;white-space:pre-wrap;border-radius:10px;margin:4px;}
+#editor.editable{border:2px solid green;padding:10px;}
+#chatBox{border-top:2px solid #ccc;background:#fff;padding:10px;height:150px;overflow-y:auto;font-size:16px;}
+#chatInput{display:flex;gap:8px;padding:8px;background:#e5e7eb;align-items:center;}
+#chatInput input{flex:1;padding:10px;font-size:16px;border:1px solid #ccc;border-radius:6px;}
+#chatInput button{background:#4f46e5;color:white;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;}
+#chatInput button:hover{background:#3730a3;}
+#emojiPicker{display:none;position:absolute;bottom:70px;right:20px;background:#fff;border:1px solid #ccc;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);max-width:250px;flex-wrap:wrap;z-index:1000;}
+#emojiPicker button{font-size:20px;margin:4px;border:none;background:transparent;cursor:pointer;}
+#chatLockDisplay{font-size:14px;color:#ef4444;font-weight:bold;padding:10px;text-align:center;display:none;}
+#raiseHand{margin:8px 0;padding:8px 12px;background:#f59e0b;color:white;border:none;border-radius:6px;cursor:pointer;}
+#raisedList,#permissionList{font-size:14px;margin-top:5px;color:#111;display:flex;flex-direction:column;gap:6px;}
+#raisedList div,#permissionList div{display:flex;gap:6px;align-items:center;position:relative;}
+.allowBtn{background:#10b981;color:white;padding:3px 6px;border-radius:5px;border:none;cursor:pointer;}
+.declineBtn{background:#ef4444;color:white;padding:3px 6px;border-radius:5px;border:none;cursor:pointer;}
+.revokeBtn{background:#6b7280;color:white;padding:3px 6px;border-radius:5px;border:none;cursor:pointer;}
+.admin-btn{margin-top:6px;padding:6px 12px;border:none;border-radius:6px;cursor:pointer;}
+#clearHandsBtn{display:none;background:#ef4444;color:white;}
+#clearPermsBtn{display:none;background:#6b7280;color:white;}
+#confettiCanvas{position:fixed;pointer-events:none;top:0;left:0;width:100%;height:100%;z-index:9999;}
+#roleModal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:999;}
+.modalCard{background:#fff;padding:20px;border-radius:12px;max-width:400px;width:90%;}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.hidden-admin { display: none !important; }
+</style>
+</head>
+<body>
+
+<canvas id="confettiCanvas"></canvas>
+
+<header>
+  <div class="title">📓 Live Class Notes</div>
+  <div>
+    <button id="toggleChatLock" style="display:none;background:#f59e0b;">🔒 Lock Chat</button>
+    <button id="toggleToolbar" style="display:none;background:#10b981;">☰ Tools</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="mainContent">
+    <div id="toolbar" class="hidden">
+      <button data-symbol="+">+</button>
+      <button data-symbol="−">−</button>
+      <button data-symbol="×">×</button>
+      <button data-symbol="÷">÷</button>
+      <button data-symbol="=">=</button>
+      <button data-symbol="√">√</button>
+      <button data-symbol="π">π</button>
+      <button data-symbol="^">^</button>
+      <button data-symbol="a/b">a/b</button>
+      <button data-symbol="Σ">Σ</button>
+      <button data-symbol="∫">∫</button>
+      <button data-symbol="θ">θ</button>
+      <button data-symbol="α">α</button>
+      <button data-symbol="β">β</button>
+      <button data-symbol="γ">γ</button>
+      <button data-symbol="Δ">Δ</button>
+      <button data-symbol="λ">λ</button>
+      <button data-symbol="μ">μ</button>
+      <button data-symbol="σ">σ</button>
+      <button data-symbol="∞">∞</button>
+      <button data-symbol="±">±</button>
+      <button data-symbol="≤">≤</button>
+      <button data-symbol="≥">≥</button>
+      <button id="btnClear">🗑 Clear</button>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;">
+      <div id="editor" contenteditable="false"><p style="color:#888;">Waiting for teacher...</p></div>
+      <div id="yourPermission" style="font-weight:bold;color:green;margin:4px 0;"></div>
+
+      <button id="raiseHand">🖐 Raise Hand</button>
+      <h4>Raised Hands:</h4>
+      <div id="raisedList"></div>
+      <button id="clearHandsBtn" class="admin-btn">Clear Raised Hands</button>
+
+      <h4>Board Permissions & Stars:</h4>
+      <div id="permissionList"></div>
+      <button id="clearPermsBtn" class="admin-btn">Revoke All Permissions</button>
+
+      <div id="chatBox"></div>
+      <div id="chatLockDisplay"></div>
+      <div id="chatInput">
+        <input type="text" id="chatMessage" placeholder="Type a message..." autocorrect="off" autocomplete="off" spellcheck="false">
+        <button id="emojiBtn">😊</button>
+        <button id="sendChat">Send</button>
+      </div>
+      <div id="emojiPicker"></div>
+    </div>
+  </div>
+</div>
+
+<div id="roleModal">
+  <div class="modalCard">
+    <h3>Select role</h3>
+    <div class="row">
+      <button id="btnTeacher">Teacher</button>
+      <button id="btnStudent">Student</button>
+    </div>
+    <div id="pwBlock" style="display:none;margin-top:12px">
+      <label>Password:</label>
+      <input type="password" id="pwInput" placeholder="Enter password">
+      <div class="row">
+        <button id="btnEnter">Enter</button>
+        <button id="btnCancel">Cancel</button>
+      </div>
+      </div>
+    </div>
+</div>
+
+<script>
+// Firebase config
+const firebaseConfig = {
+  apiKey:"AIzaSyCjivkTeBcbr-UnnkfMbIYX7_9Wxya5U04",
+  authDomain:"raheim-s-class.firebaseapp.com",
+  databaseURL:"https://raheim-s-class-default-rtdb.firebaseio.com",
+  projectId:"raheim-s-class",
+  storageBucket:"raheim-s-class.firebasestorage.app",
+  messagingSenderId:"576992270609",
+  appId:"1:576992270609:web:7441555f9299b8d42bd4b0",
+  measurementId:"G-MQZ68MPYH3"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Variables
+let isTeacher=false, userName="Student", userRole="Student";
+const editor=document.getElementById('editor');
+const toolbar=document.getElementById('toolbar');
+const toggleToolbar=document.getElementById('toggleToolbar');
+const toggleChatLock=document.getElementById('toggleChatLock');
+const chatBox=document.getElementById('chatBox');
+const chatInput=document.getElementById('chatInput');
+const chatMsg=document.getElementById('chatMessage');
+const chatLockDisplay=document.getElementById('chatLockDisplay');
+const emojiPicker=document.getElementById('emojiPicker');
+const raiseHandBtn=document.getElementById('raiseHand');
+const raisedList=document.getElementById('raisedList');
+const permissionList=document.getElementById('permissionList');
+const yourPermission=document.getElementById('yourPermission');
+const clearHandsBtn=document.getElementById('clearHandsBtn');
+const clearPermsBtn=document.getElementById('clearPermsBtn');
+const confettiCanvas=document.getElementById('confettiCanvas');
+const TEACHER_PASSWORD="raheimp100classstarts";
+
+// Utilities
+function getProfileEmoji(name){
+  if(name==="Teacher") return "👨‍🏫";
+  // Use only the first part of the unique name for the hash
+  const baseName = name.split('_')[0]; 
+  const base=["✨","🚀","💡","🧠","🌱","🦉","🧩","🌟"], dec=["💻","📚","📐","📝","🔬"];
+  let hash=0;
+  for(let i=0;i<baseName.length;i++) hash+=baseName.charCodeAt(i);
+  return `${base[hash%base.length]}${dec[hash%dec.length]}`;
+}
+function launchConfetti(){
+  const myConfetti=confetti.create(confettiCanvas,{resize:true,useWorker:true});
+  myConfetti({particleCount:100,spread:70,origin:{y:0.6}});
+}
+
+// Load notes
+db.ref('notes').on('value',snap=>{
+  if(!isTeacher || editor.contentEditable==="false"){
+    const data=snap.val();
+    editor.innerHTML=data?.content||"";
+  }
+});
+
+// Debounced editor updates 
+let debounceTimer;
+editor.addEventListener('input',()=>{
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(()=>{
+    if(isTeacher || editor.contentEditable==="true"){
+      db.ref('notes').set({content:editor.innerHTML});
+    }
+  },300); 
+});
+
+// Toolbar buttons
+toolbar.querySelectorAll('button[data-symbol]').forEach(btn=>{
+  btn.onclick=()=>{
+    if(!isTeacher && editor.contentEditable!=="true") return;
+    editor.innerHTML+=btn.getAttribute('data-symbol');
+    // Save immediately after button click
+    db.ref('notes').set({content:editor.innerHTML}); 
+  };
+});
+document.getElementById('btnClear').onclick=()=>{if(isTeacher){editor.innerHTML='';db.ref('notes').set({content:""});}};
+toggleToolbar.onclick=()=>{toolbar.classList.toggle('hidden');};
+
+// Chat lock
+db.ref('chatStatus').on('value', snap => {
+  const isLocked = snap.val()===true;
+  if(isLocked){
+    chatInput.style.display='none';
+    chatLockDisplay.style.display='block';
+    // FIX: Use <b> tags instead of Markdown ** for correct HTML rendering.
+    chatLockDisplay.innerHTML='🚫 Chat is currently <b>PAUSED</b> by the teacher.'; 
+  }else{
+    chatLockDisplay.style.display='none';
+    chatInput.style.display='flex';
+  }
+  if(isTeacher){
+    toggleChatLock.textContent = isLocked?'🔓 Unlock Chat':'🔒 Lock Chat';
+    toggleChatLock.style.backgroundColor = isLocked?'#10b981':'#f59e0b';
+  }
+});
+toggleChatLock.onclick=()=>{
+  if(isTeacher){
+    db.ref('chatStatus').once('value', snap=>{
+      const isLocked = snap.val()===true;
+      db.ref('chatStatus').set(!isLocked);
+    });
+  }
+};
+
+// Chat
+function appendChat(msg){
+  const div = document.createElement('div');
+  const displayName = msg.userName.split('_')[0]; 
+  div.innerHTML = `<b>${getProfileEmoji(msg.userName)} ${displayName}:</b> ${msg.text}`;
+  
+  // UX IMPROVEMENT: Check if user is near the bottom (within 50px tolerance) before auto-scrolling
+  const atBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
+  
+  chatBox.appendChild(div);
+  
+  if(atBottom) chatBox.scrollTop = chatBox.scrollHeight;
+}
+db.ref('chat').on('child_added', snap => appendChat(snap.val()));
+function sendChat(){const text=chatMsg.value.trim();if(text){db.ref('chat').push({user:userRole,userName:userName,text:text});chatMsg.value='';}}
+document.getElementById('sendChat').onclick=sendChat;
+chatMsg.addEventListener('keypress',e=>{if(e.key==='Enter' && chatInput.style.display !== 'none') sendChat();});
+
+// Emoji picker
+const emojis=["😀","😂","😍","😭","😎","😡","👍","👎","🙏","🔥","🎉","⭐","💯","🍎","📚","✏️","🧮"];
+emojis.forEach(e=>{
+  const btn=document.createElement('button');
+  btn.textContent=e;
+  btn.onclick=()=>{chatMsg.value+=e;emojiPicker.style.display='none';chatMsg.focus();};
+  emojiPicker.appendChild(btn);
+});
+document.getElementById('emojiBtn').onclick=()=>{emojiPicker.style.display=(emojiPicker.style.display==='none'?'flex':'none');};
+
+// Raise Hand
+raiseHandBtn.onclick=()=>{db.ref('raisedHands/'+userName).set(true);}
+db.ref('raisedHands').on('value',snap=>{
+  raisedList.innerHTML='';
+  const data=snap.val()||{};
+  Object.keys(data).forEach(name=>{
+    const row=document.createElement('div');
+    const displayName = name.split('_')[0];
+    row.innerHTML=`${getProfileEmoji(name)} ${displayName}`;
+    if(isTeacher){
+      const allowBtn=document.createElement('button');
+      allowBtn.textContent='Allow'; allowBtn.className='allowBtn';
+      allowBtn.onclick=()=>{db.ref('permissions/'+name).set(true);db.ref('raisedHands/'+name).remove();launchConfetti();}
+      const declineBtn=document.createElement('button');
+      declineBtn.textContent='Decline'; declineBtn.className='declineBtn';
+      declineBtn.onclick=()=>db.ref('raisedHands/'+name).remove();
+      row.append(allowBtn, declineBtn);
+    }
+    raisedList.appendChild(row);
+  });
+  clearHandsBtn.style.display=(isTeacher && Object.keys(data).length>0)?'inline-block':'none';
+});
+clearHandsBtn.onclick=()=>{if(isTeacher) db.ref('raisedHands').set({});}
+
+// Permissions
+db.ref("permissions").on("value",snap=>{
+  permissionList.innerHTML='';
+  const data=snap.val()||{};
+  Object.keys(data).forEach(name=>{
+    const row=document.createElement("div");
+    const displayName = name.split('_')[0];
+    row.innerHTML=`${getProfileEmoji(name)} <span class="star-student">${displayName} (Access)</span>`;
+    if(isTeacher){
+      const revokeBtn=document.createElement("button");
+      revokeBtn.textContent="Revoke"; revokeBtn.className="revokeBtn";
+      revokeBtn.onclick=()=>db.ref("permissions/"+name).remove();
+      row.append(revokeBtn);
+    }
+    permissionList.appendChild(row);
+  });
+  if(userName!=="Teacher"){
+    if(data[userName]){
+        yourPermission.innerText="✅ You have board access"; 
+        editor.contentEditable="true"; 
+        editor.classList.add('editable');
+    }
+    else{
+        yourPermission.innerText=""; 
+        editor.contentEditable="false"; 
+        editor.classList.remove('editable');
+    }
+  }
+  clearPermsBtn.style.display=(isTeacher && Object.keys(data).length>0)?'inline-block':'none';
+});
+clearPermsBtn.onclick=()=>{if(isTeacher) db.ref("permissions").set({});}
+
+// Role modal
+const roleModal=document.getElementById('roleModal');
+document.getElementById('btnTeacher').onclick=()=>{document.getElementById('pwBlock').style.display='block';};
+document.getElementById('btnCancel').onclick=()=>{document.getElementById('pwBlock').style.display='none';};
+document.getElementById('btnEnter').onclick=()=>{
+  const pw=document.getElementById('pwInput').value;
+  if(pw===TEACHER_PASSWORD){
+    isTeacher=true;userRole="Teacher";userName="Teacher";
+    toggleToolbar.style.display='inline-block';
+    toggleChatLock.style.display='inline-block';
+    toolbar.classList.remove('hidden');
+    editor.contentEditable='true'; editor.classList.add('editable');
+    roleModal.style.display='none'; chatInput.style.display='flex';
+    editor.innerHTML="<p>Start typing...</p>"; db.ref('notes').set({content:editor.innerHTML});
+  } else alert("Wrong password");
+};
+document.getElementById('btnStudent').onclick=()=>{
+  const namePrompt = prompt("Enter your name:")||"Student";
+  // Unique Student Name: ensures no two students share a key in Firebase
+  const baseName = namePrompt.trim().replace(/ /g, '_');
+  userName = baseName + '_' + Math.floor(Math.random()*1000000); 
+  
+  isTeacher=false;userRole="Student";
+  toggleToolbar.style.display='none'; toggleChatLock.style.display='none';
+  toolbar.classList.add('hidden'); editor.contentEditable='false'; editor.classList.remove('editable');
+  roleModal.style.display='none'; chatInput.style.display='flex';
+};
+</script>
+</body>
+</html>
