@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Raheim’s Class</title>
+<style>
+  body{font-family:sans-serif;margin:0;background:#f2f3f5}
+  header{background:#2563eb;color:#fff;padding:10px;text-align:center}
+  main{max-width:900px;margin:auto;padding:10px}
+  .card{background:#fff;padding:10px;margin:10px 0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+  textarea,input{width:100%;padding:8px;margin:5px 0;border:1px solid #ccc;border-radius:6px}
+  button{padding:6px 12px;border:none;border-radius:6px;background:#2563eb;color:#fff;margin:4px;cursor:pointer}
+  .chat{max-height:200px;overflow:auto;background:#f9fafb;padding:6px;border-radius:6px}
+  .note{background:#eef2ff;padding:6px;border-radius:6px;margin:4px 0}
+  .raise{background:#fff3cd;padding:4px;border-radius:4px;margin:2px 0}
+</style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
+</head>
+<body>
+<header><h1>Raheim’s Class</h1></header>
+<main>
+  <div id="loginCard" class="card">
+    <h2>Join the Class</h2>
+    <button onclick="pickRole('teacher')">I’m a Teacher</button>
+    <button onclick="pickRole('student')">I’m a Student</button>
+    <div id="teacherPass" style="display:none">
+      <p>Enter teacher code:</p>
+      <input type="password" id="passInput" placeholder="Enter code">
+      <button onclick="enterTeacher()">Enter</button>
+    </div>
+    <div id="studentName" style="display:none">
+      <p>Enter your name:</p>
+      <input id="nameInput" placeholder="Name">
+      <button onclick="enterStudent()">Join</button>
+    </div>
+  </div>
+
+  <div id="mainArea" style="display:none">
+    <div id="notes" class="card">
+      <h3>Notes Board</h3>
+      <div id="noteList"></div>
+      <div id="teacherNoteBox" style="display:none">
+        <textarea id="noteText" placeholder="Write a note..."></textarea>
+        <button onclick="postNote()">Post Note</button>
+      </div>
+    </div>
+
+    <div id="chat" class="card">
+      <h3>Chat</h3>
+      <div class="chat" id="chatBox"></div>
+      <input id="chatInput" placeholder="Type message...">
+      <button onclick="sendMsg()">Send 💬</button>
+      <button id="clearChatBtn" style="display:none" onclick="clearChat()">Clear Chat</button>
+    </div>
+
+    <div id="raise" class="card">
+      <h3>Raise Hand ✋</h3>
+      <button id="raiseBtn" onclick="raiseHand()">Raise</button>
+      <div id="raiseList"></div>
+      <button id="clearRaiseBtn" style="display:none" onclick="clearRaise()">Clear Raises</button>
+    </div>
+  </div>
+</main>
+
+<script>
+/* -------- Firebase setup -------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCjivkTeBcbr-UnnkfMbIYX7_9Wxya5U04",
+  authDomain: "raheim-s-class.firebaseapp.com",
+  databaseURL: "https://raheim-s-class-default-rtdb.firebaseio.com",
+  projectId: "raheim-s-class",
+  storageBucket: "raheim-s-class.firebasestorage.app",
+  messagingSenderId: "576992270609",
+  appId: "1:576992270609:web:7441555f9299b8d42bd4b0",
+  measurementId: "G-MQZ68MPYH3"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* -------- Globals -------- */
+let role = null;
+let name = null;
+
+/* -------- Login -------- */
+function pickRole(r){
+  role=r;
+  if(r==='teacher'){
+    document.getElementById('teacherPass').style.display='block';
+  }else{
+    document.getElementById('studentName').style.display='block';
+  }
+}
+function enterTeacher(){
+  const pw=document.getElementById('passInput').value;
+  if(pw!=='raheimp100classstarts'){alert('Wrong code');return;}
+  db.ref('status/teacher').get().then(s=>{
+    if(s.exists() && s.val().active){alert('A teacher is already active.');}
+    else{
+      db.ref('status/teacher').set({active:true,time:Date.now()});
+      startClass('teacher');
+    }
+  });
+}
+function enterStudent(){
+  name=document.getElementById('nameInput').value.trim();
+  if(!name){alert('Enter name');return;}
+  startClass('student');
+}
+
+/* -------- UI start -------- */
+function startClass(r){
+  role=r;
+  document.getElementById('loginCard').style.display='none';
+  document.getElementById('mainArea').style.display='block';
+  if(r==='teacher'){
+    document.getElementById('teacherNoteBox').style.display='block';
+    document.getElementById('clearChatBtn').style.display='inline-block';
+    document.getElementById('clearRaiseBtn').style.display='inline-block';
+    document.getElementById('raiseBtn').style.display='none';
+  }
+  listenNotes();
+  listenChat();
+  listenRaise();
+}
+
+/* -------- Notes -------- */
+function postNote(){
+  const t=document.getElementById('noteText').value.trim();
+  if(!t)return;
+  db.ref('notes').push({text:t,time:Date.now()});
+  document.getElementById('noteText').value='';
+}
+function listenNotes(){
+  db.ref('notes').on('value',snap=>{
+    const d=snap.val()||{};
+    const list=document.getElementById('noteList');
+    list.innerHTML='';
+    Object.values(d).reverse().forEach(n=>{
+      const div=document.createElement('div');
+      div.className='note';
+      div.textContent=n.text;
+      list.appendChild(div);
+    });
+  });
+}
+
+/* -------- Chat -------- */
+function sendMsg(){
+  const t=document.getElementById('chatInput').value.trim();
+  if(!t)return;
+  db.ref('chat').push({name:role==='teacher'?'Teacher':name||'Student',text:t,time:Date.now()});
+  document.getElementById('chatInput').value='';
+}
+function listenChat(){
+  db.ref('chat').on('value',snap=>{
+    const d=snap.val()||{};
+    const box=document.getElementById('chatBox');
+    box.innerHTML='';
+    Object.values(d).forEach(m=>{
+      const div=document.createElement('div');
+      div.textContent=`${m.name}: ${m.text}`;
+      box.appendChild(div);
+    });
+    box.scrollTop=box.scrollHeight;
+  });
+}
+function clearChat(){
+  db.ref('chat').remove();
+}
+
+/* -------- Raise hand -------- */
+function raiseHand(){
+  db.ref('raises').push({name:name||'Student',time:Date.now()});
+}
+function listenRaise(){
+  db.ref('raises').on('value',snap=>{
+    const d=snap.val()||{};
+    const list=document.getElementById('raiseList');
+    list.innerHTML='';
+    Object.values(d).forEach(r=>{
+      const div=document.createElement('div');
+      div.className='raise';
+      div.textContent=r.name;
+      list.appendChild(div);
+    });
+  });
+}
+function clearRaise(){
+  db.ref('raises').remove();
+}
+</script>
+</body>
+</html>
