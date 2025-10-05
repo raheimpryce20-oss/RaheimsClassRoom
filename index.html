@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RaheimsClassRoom</title>
+<style>
+:root {
+    --primary-color:#2563eb;
+    --background-color:#f7f9fc;
+    --card-background:#fff;
+    --note-background:#eef2ff;
+    --raise-background:#fff3cd;
+    --text-color:#333;
+    --border-radius:10px;
+    --spacing-md:16px;
+    --spacing-lg:24px;
+    --spacing-sm:8px;
+}
+body {font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;margin:0;background:var(--background-color);color:var(--text-color);line-height:1.6;}
+header {background:var(--primary-color);color:var(--card-background);padding:20px 0;text-align:center;box-shadow:0 4px 8px rgba(0,0,0,0.1);}
+header h1{margin:0;font-size:1.8em;}
+main{max-width:1200px;margin:var(--spacing-lg) auto;padding:0 var(--spacing-md);}
+.card{background:var(--card-background);padding:var(--spacing-lg);margin-bottom:var(--spacing-lg);border-radius:var(--border-radius);box-shadow:0 4px 12px rgba(0,0,0,0.08);}
+textarea,input{width:100%;padding:10px;margin:var(--spacing-sm) 0;border:1px solid #dcdfe4;border-radius:6px;box-sizing:border-box;transition:border-color 0.2s;}
+textarea{resize:vertical;}
+textarea:focus,input:focus{border-color:var(--primary-color);outline:none;}
+button{padding:10px 20px;border:none;border-radius:6px;background:var(--primary-color);color:#fff;margin-right:8px;cursor:pointer;transition:background-color 0.2s,transform 0.1s;font-weight:600;white-space:nowrap;}
+button:hover{background:#1e52c7;}
+button:disabled{background:#aaa;cursor:not-allowed;}
+.symbol-button{padding:6px 12px;font-size:1.1em;background:#6c757d;margin:2px;}
+.symbol-button:hover{background:#5a6268;}
+.avatar-btn{padding:4px 8px;margin:2px;font-size:1.2em;border-radius:4px;border:1px solid #ccc;cursor:pointer;}
+.avatar-btn.selected{border:2px solid var(--primary-color);}
+#mainArea{display:grid;grid-template-columns:2fr 1fr;gap:var(--spacing-lg);align-items:start;}
+@media(max-width:900px){#mainArea{grid-template-columns:1fr;}}
+.chat{max-height:350px;min-height:150px;overflow-y:auto;background:#f0f2f5;padding:var(--spacing-md);border-radius:6px;margin-bottom:var(--spacing-md);border:1px solid #e0e0e0;}
+.chat div{margin-bottom:8px;padding:4px 0;}
+.note{background:var(--note-background);padding:12px;border-radius:8px;margin:10px 0;border-left:4px solid var(--primary-color);font-size:1.05em;white-space:pre-wrap;position:relative;}
+.note-meta{font-size:0.8em;color:#666;display:block;margin-bottom:4px;}
+.raise{background:var(--raise-background);padding:10px;border-radius:6px;margin:8px 0;font-weight:500;border:1px solid #ffeb8f;display:flex;justify-content:space-between;align-items:center;}
+.raise button{background:#008000;padding:4px 8px;font-size:0.9em;margin-right:0;}
+#teacherPass,#studentName{margin-top:var(--spacing-md);padding-top:var(--spacing-md);border-top:1px dashed #e0e0e0;}
+.button-group{margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
+</head>
+<body>
+<header><h1>RaheimsClassRoom Class Starts - Let's Learn!</h1></header>
+<main>
+<div id="loginCard" class="card" style="display:block;">
+    <h2>Welcome! Join the Class</h2>
+    <div class="button-group">
+        <button onclick="pickRole('teacher')">I’m a Teacher 👨‍🏫</button>
+        <button onclick="pickRole('student')">I’m a Student 🎓</button>
+    </div>
+
+    <div id="teacherPass" style="display:none">
+        <p>Enter teacher code:</p>
+        <input type="password" id="passInput" placeholder="Enter secret code">
+        <p>Select your avatar:</p>
+        <div id="teacherAvatars" class="button-group"></div>
+        <button id="enterTeacherBtn">Enter</button>
+    </div>
+
+    <div id="studentName" style="display:none">
+        <p>Enter your name:</p>
+        <input id="nameInput" placeholder="Your Name">
+        <p>Select your avatar:</p>
+        <div id="studentAvatars" class="button-group"></div>
+        <button id="enterStudentBtn">Join Class</button>
+    </div>
+</div>
+
+<div id="mainArea" style="display:none">
+    <div id="notes" class="card">
+        <h3>Notes Board</h3>
+        <div id="noteList"></div>
+        <div id="teacherNoteBox" style="display:none">
+            <p>Write a note to the class:</p>
+            <textarea id="noteText" placeholder="Start typing..." rows="6"></textarea>
+            <div id="mathSymbols" style="margin-bottom:8px;"></div>
+            <button id="postNoteBtn">Post New Note</button>
+        </div>
+    </div>
+
+    <div>
+        <div id="chat" class="card">
+            <h3>Class Chat</h3>
+            <div class="chat" id="chatBox"></div>
+            <input id="chatInput" placeholder="Type message...">
+            <div class="button-group">
+                <button id="sendChatBtn">Send 💬</button>
+                <button id="clearChatBtn" style="display:none;background:#dc3545;">Clear Chat</button>
+            </div>
+        </div>
+
+        <div id="raise" class="card">
+            <h3>Raise Hand ✋</h3>
+            <button id="raiseBtn">Raise Hand</button>
+            <div id="raiseList" style="margin-top:10px;"></div>
+            <button id="clearRaiseBtn" style="display:none;background:#ffc107;color:#333;">Clear All Raises</button>
+        </div>
+    </div>
+</div>
+</main>
+
+<script>
+// Firebase Config
+const firebaseConfig = {
+    apiKey:"AIzaSyCjivsTeBcbr-UnnkfMbIYX7_9Wxya5U04",
+    authDomain:"raheim-s-class.firebaseapp.com",
+    databaseURL:"https://raheim-s-class-default-rtdb.firebaseio.com",
+    projectId:"raheim-s-class",
+    storageBucket:"raheim-s-class.appspot.com",
+    messagingSenderId:"576992270609",
+    appId:"1:576992270609:web:7441555f9299b8d42bd4b0",
+    measurementId:"G-MQZ68MPYH3"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// Globals
+let role=null, name=null, avatar=null;
+const TEACHER_CODE='raheimp100classstarts';
+const TEACHER_TIMEOUT=2*60*1000;
+const DEBOUNCE_MS=1500;
+const teacherStatusRef=db.ref('status/teacher');
+
+const mathSymbols=['π','√','∞','∑','÷','≠','≈','θ','Δ','α','β','γ'];
+const teacherAvatars=['👩‍🏫','👨‍🏫','🧑‍🏫'];
+const studentAvatars=['😀','😎','🤓','🧐','🥳','🤩','😇','😜','😏','😺'];
+
+let postDisabled=false, sendDisabled=false;
+
+// Helpers
+function sanitizeName(n){return n.trim().replace(/[.#$\[\]\/]/g,'_');}
+function insertSymbol(s){
+    const t=document.getElementById('noteText');
+    const start=t.selectionStart,end=t.selectionEnd;
+    t.value=t.value.substring(0,start)+s+t.value.substring(end);
+    t.focus();t.selectionStart=t.selectionEnd=start+s.length;
+}
+
+// Setup Avatar Selection
+function setupAvatars(){
+    const tDiv=document.getElementById('teacherAvatars');
+    teacherAvatars.forEach(a=>{
+        const b=document.createElement('button');
+        b.className='avatar-btn';b.textContent=a;
+        b.onclick=()=>{avatar=a;document.querySelectorAll('#teacherAvatars .avatar-btn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');};
+        tDiv.appendChild(b);
+    });
+    const sDiv=document.getElementById('studentAvatars');
+    studentAvatars.forEach(a=>{
+        const b=document.createElement('button');
+        b.className='avatar-btn';b.textContent=a;
+        b.onclick=()=>{avatar=a;document.querySelectorAll('#studentAvatars .avatar-btn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');};
+        sDiv.appendChild(b);
+    });
+}
+setupAvatars();
+
+// Math symbols buttons
+const mathDiv=document.getElementById('mathSymbols');
+mathSymbols.forEach(sym=>{
+    const b=document.createElement('button');
+    b.className='symbol-button';b.textContent=sym;
+    b.onclick=()=>insertSymbol(sym);
+    mathDiv.appendChild(b);
+});
+
+// Role pick
+function pickRole(r){
+    role=r;
+    document.getElementById('teacherPass').style.display='none';
+    document.getElementById('studentName').style.display='none';
+    if(r==='teacher') document.getElementById('teacherPass').style.display='block';
+    else document.getElementById('studentName').style.display='block';
+}
+
+// Teacher login
+document.getElementById('enterTeacherBtn').onclick=()=>{
+    const pw=document.getElementById('passInput').value;
+    if(pw!==TEACHER_CODE){alert('Wrong code');return;}
+    if(!avatar){alert('Select an avatar');return;}
+    teacherStatusRef.transaction(current=>{
+        const now=Date.now();
+        if(current && current.active && (now-current.time<TEACHER_TIMEOUT)) return;
+        return {active:true,time:now};
+    },(err,committed)=>{
+        if(err){alert('Database error');console.error(err);}
+        else if(!committed) alert('Another teacher is active. Wait or refresh.');
+        else{
+            teacherStatusRef.onDisconnect().set({active:false,time:'Disconnected'});
+            name='Teacher';
+            startClass('teacher');
+        }
+    });
+};
+
+// Student login
+document.getElementById('enterStudentBtn').onclick=()=>{
+    name=document.getElementById('nameInput').value.trim();
+    if(!name){alert('Enter your name');return;}
+    if(!avatar){alert('Select an avatar');return;}
+    startClass('student');
+};
+
+// Start class
+function startClass(r){
+    role=r;
+    document.getElementById('loginCard').style.display='none';
+    document.getElementById('mainArea').style.display='grid';
+    if(r==='teacher'){
+        document.getElementById('teacherNoteBox').style.display='block';
+        document.getElementById('clearChatBtn').style.display='inline-block';
+        document.getElementById('clearRaiseBtn').style.display='inline-block';
+        document.getElementById('raiseBtn').style.display='none';
+    } else {
+        document.getElementById('teacherNoteBox').style.display='none';
+        document.getElementById('clearChatBtn').style.display='none';
+        document.getElementById('clearRaiseBtn').style.display='none';
+        document.getElementById('raiseBtn').style.display='inline-block';
+    }
+    listenNotes(); listenChat(); listenRaise();
+}
+
+// Notes
+document.getElementById('postNoteBtn').onclick=()=>{
+    if(postDisabled) return;
+    postDisabled=true; setTimeout(()=>postDisabled=false,DEBOUNCE_MS);
+    const t=document.getElementById('noteText').value.trim();
+    if(!t) return;
+    db.ref('notes').push({text:t,name:name,avatar:avatar,time:firebase.database.ServerValue.TIMESTAMP});
+    document.getElementById('noteText').value='';
+};
+function createNoteElement(n){
+    const div=document.createElement('div');
+    div.className='note';
+    div.innerHTML=`<span class="note-meta">${n.avatar} ${n.name} - ${new Date(n.time).toLocaleTimeString()}</span>`;
+    div.appendChild(document.createTextNode(n.text));
+    return div;
+}
+function listenNotes(){
+    const list=document.getElementById('noteList'); list.innerHTML='';
+    db.ref('notes').limitToLast(10).once('value',snap=>{
+        const arr=Object.values(snap.val()||{}).sort((a,b)=>a.time-b.time);
+        arr.forEach(n=>list.prepend(createNoteElement(n)));
+        let lastTime=arr.length>0?arr[arr.length-1].time:Date.now();
+        db.ref('notes').orderByChild('time').off('child_added');
+        db.ref('notes').orderByChild('time').startAt(lastTime+1).on('child_added',snap=>{list.prepend(createNoteElement(snap.val()));});
+    });
+}
+
+// Chat
+document.getElementById('sendChatBtn').onclick=()=>{
+    if(sendDisabled) return;
+    sendDisabled=true; setTimeout(()=>sendDisabled=false,DEBOUNCE_MS);
+    const t=document.getElementById('chatInput').value.trim();
+    if(!t) return;
+    db.ref('chat').push({name:name,avatar:avatar,text:t,time:firebase.database.ServerValue.TIMESTAMP});
+    document.getElementById('chatInput').value='';
+};
+function createChatElement(m){
+    const div=document.createElement('div');
+    const ts=new Date(m.time).toLocaleTimeString();
+    div.innerHTML=`${m.avatar} <strong>${m.name}</strong> (${ts}): ${m.text}`;
+    return div;
+}
+function listenChat(){
+    const box=document.getElementById('chatBox'); box.innerHTML='';
+    db.ref('chat').limitToLast(50).once('value',snap=>{
+        const arr=Object.values(snap.val()||{}).sort((a,b)=>a.time-b.time);
+        let lastTime=0; arr.forEach(m=>{box.appendChild(createChatElement(m)); lastTime=m.time;});
+        box.scrollTop=box.scrollHeight;
+        db.ref('chat').orderByChild('time').off('child_added');
+        db.ref('chat').orderByChild('time').startAt(lastTime+1).on('child_added',snap=>{box.appendChild(createChatElement(snap.val())); box.scrollTop=box.scrollHeight;});
+    });
+}
+document.getElementById('clearChatBtn').onclick=()=>{if(role==='teacher'&&confirm('Clear all chat?')) db.ref('chat').remove();};
+
+// Raise Hand
+document.getElementById('raiseBtn').onclick=()=>{raiseHand();};
+document.getElementById('clearRaiseBtn').onclick=()=>{if(role==='teacher'&&confirm('Clear all raises?')) db.ref('raises').remove();};
+function raiseHand(){
+    if(!name) return alert('Enter name!');
+    const btn=document.getElementById('raiseBtn'); btn.disabled=true;
+    const key=sanitizeName(name);
+    const ref=db.ref('raises/'+key);
+    ref.once('value').then(s=>{if(s.exists()) ref.remove(); else ref.set({name:name,avatar:avatar,time:firebase.database.ServerValue.TIMESTAMP});}).finally(()=>setTimeout(()=>btn.disabled=false,DEBOUNCE_MS));
+}
+function listenRaise(){
+    const list=document.getElementById('raiseList'); list.innerHTML='';
+    const elements={}; const ref=db.ref('raises').orderByChild('time');
+    ref.on('child_added',snap=>{
+        const r=snap.val(); const k=snap.key;
+        const div=document.createElement('div'); div.className='raise'; div.textContent=`${r.avatar} ${r.name}`;
+        elements[k]=div;
+        if(role==='teacher'){
+            const ack=document.createElement('button'); ack.textContent='Acknowledge';
+            ack.onclick=()=>db.ref('raises/'+k).remove();
+            div.appendChild(ack);
+        }
+        list.appendChild(div);
+        if(role==='student' && k===sanitizeName(name)){document.getElementById('raiseBtn').textContent='Lower Hand'; document.getElementById('raiseBtn').disabled=false;}
+    });
+    ref.on('child_removed',snap=>{
+        const k=snap.key; if(elements[k]){list.removeChild(elements[k]); delete elements[k];}
+        if(role==='student' && k===sanitizeName(name)){document.getElementById('raiseBtn').textContent='Raise Hand'; document.getElementById('raiseBtn').disabled=false;}
+    });
+}
+</script>
+</body>
+</html>
