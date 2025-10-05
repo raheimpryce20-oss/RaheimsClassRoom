@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>📓 Live Class Notes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+body{font-family:'Segoe UI',sans-serif;margin:0;background:#f0f4f8;color:#333;display:flex;flex-direction:column;height:100vh;}
+header{background:#1f2d3d;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;}
+header .title{font-size:20px;font-weight:bold;}
+.container{flex:1;display:flex;flex-direction:column;}
+.mainContent{flex:1;display:flex;}
+
+/* Toolbar */
+#toolbar{display:none;flex-direction:column;gap:6px;background:#e0e7ff;padding:10px;border-right:2px solid #c7d2fe;min-width:80px;overflow-y:auto;}
+#toolbar button{background:#4f46e5;color:#fff;border:none;padding:6px;border-radius:6px;cursor:pointer;font-size:18px;}
+#toolbar button:hover{background:#3730a3;}
+#btnClear{background:#ef4444;}
+#editor{flex:1;background:#fff;padding:18px;min-height:300px;font-size:20px;line-height:1.6;overflow-wrap:break-word;word-wrap:break-word;word-break:break-word;white-space:pre-wrap;overflow-y:auto;}
+
+/* Reactions */
+#reactions{border-top:1px solid #ccc;padding:10px;background:#fff;display:flex;gap:10px;font-size:22px;}
+#reactions button{background:none;border:none;cursor:pointer;}
+#reactionCounts{margin-top:5px;font-size:16px;}
+
+/* Raise Hand */
+#raiseHand{margin:8px 0;padding:8px 12px;background:#f59e0b;color:white;border:none;border-radius:6px;cursor:pointer;}
+#raiseHand:hover{background:#d97706;}
+#raisedList{font-size:14px;margin-top:5px;color:#dc2626;}
+#clearHandsBtn{display:none;background:#ef4444;color:white;padding:6px 12px;border:none;border-radius:6px;margin-top:4px;cursor:pointer;}
+
+/* Chat */
+#chatBox{border-top:2px solid #ccc;background:#fff;padding:10px;height:200px;overflow-y:auto;font-size:16px;}
+#chatInput{display:none;gap:8px;padding:8px;background:#e5e7eb;align-items:center;}
+#chatInput input{flex:1;padding:10px;font-size:16px;border:1px solid #ccc;border-radius:6px;}
+#chatInput button{background:#4f46e5;color:white;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;}
+#chatInput button:hover{background:#3730a3;}
+#clearChat{background:#ef4444 !important;}
+
+/* Emoji picker */
+#emojiPicker{display:none;position:absolute;bottom:70px;right:20px;background:#fff;border:1px solid #ccc;padding:10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);max-width:250px;flex-wrap:wrap;z-index:1000;}
+#emojiPicker button{font-size:20px;margin:4px;border:none;background:transparent;cursor:pointer;}
+
+/* Modal */
+#roleModal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:999;}
+.modalCard{background:#fff;padding:20px;border-radius:12px;max-width:400px;width:90%;}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+
+/* Mobile friendly */
+@media (max-width:600px){
+  #editor{font-size:18px;padding:12px;}
+  #toolbar{min-width:60px;padding:6px;gap:4px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">📓 Live Class Notes</div>
+  <div>
+    <button id="toggleToolbar" style="display:none;background:#10b981;color:#fff;">☰ Tools</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="mainContent">
+    <div id="toolbar">
+      <button data-symbol="√">√</button>
+      <button data-symbol="π">π</button>
+      <button data-symbol="^">^</button>
+      <button data-symbol="Σ">Σ</button>
+      <button data-symbol="∫">∫</button>
+      <button data-symbol="θ">θ</button>
+      <button data-symbol="∞">∞</button>
+      <button id="btnClear">🗑</button>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;">
+      <div id="editor" contenteditable="false"><p style="color:#888;">Waiting for teacher...</p></div>
+      <div id="reactions">
+        <button data-emoji="👍">👍</button>
+        <button data-emoji="🔥">🔥</button>
+        <button data-emoji="⭐">⭐</button>
+      </div>
+      <div id="reactionCounts"></div>
+      <button id="raiseHand">🖐 Raise Hand</button>
+      <div id="raisedList"></div>
+      <button id="clearHandsBtn">Clear Raised Hands</button>
+    </div>
+  </div>
+  <div id="chatBox"></div>
+  <div id="chatInput">
+    <input type="text" id="chatMessage" placeholder="Type a message...">
+    <button id="emojiBtn">😊</button>
+    <button id="sendChat">Send</button>
+    <button id="clearChat" style="display:none;">Clear</button>
+  </div>
+</div>
+
+<div id="emojiPicker"></div>
+
+<div id="roleModal">
+  <div class="modalCard">
+    <h3>Select role</h3>
+    <div class="row">
+      <button id="btnTeacher">Teacher</button>
+      <button id="btnStudent" class="ghost">Student</button>
+    </div>
+    <div id="pwBlock" style="display:none;margin-top:12px">
+      <label>Password:</label>
+      <input type="password" id="pwInput" placeholder="Enter password">
+      <div class="row">
+        <button id="btnEnter">Enter</button>
+        <button id="btnCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyCjivkTeBcbr-UnnkfMbIYX7_9Wxya5U04",
+  authDomain: "raheim-s-class.firebaseapp.com",
+  databaseURL: "https://raheim-s-class-default-rtdb.firebaseio.com",
+  projectId: "raheim-s-class",
+  storageBucket: "raheim-s-class.firebasestorage.app",
+  messagingSenderId: "576992270609",
+  appId: "1:576992270609:web:7441555f9299b8d42bd4b0",
+  measurementId: "G-MQZ68MPYH3"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// Vars
+const editor=document.getElementById('editor');
+const toolbar=document.getElementById('toolbar');
+const toggleToolbar=document.getElementById('toggleToolbar');
+const chatBox=document.getElementById('chatBox');
+const chatInput=document.getElementById('chatInput');
+const clearChatBtn=document.getElementById('clearChat');
+const reactionCounts=document.getElementById('reactionCounts');
+const raisedList=document.getElementById('raisedList');
+const raiseHandBtn=document.getElementById('raiseHand');
+const clearHandsBtn=document.getElementById('clearHandsBtn');
+let isTeacher=false;
+let userRole="Student";
+let userName="Student";
+const TEACHER_PASSWORD="raheimp100classstarts";
+
+// Notes sync
+db.ref('notes').on('value',snap=>{
+  if(!isTeacher){
+    const data=snap.val();
+    if(data) editor.innerHTML=data.content||"";
+  }
+});
+editor.addEventListener('input',()=>{
+  editor.style.height="auto";
+  editor.style.height=editor.scrollHeight+"px";
+  if(isTeacher) db.ref('notes').set({content:editor.innerHTML});
+});
+
+// Toolbar
+toolbar.querySelectorAll("button[data-symbol]").forEach(btn=>{
+  btn.onclick=()=>{
+    if(!isTeacher) return;
+    editor.innerHTML+=btn.getAttribute("data-symbol");
+    db.ref('notes').set({content:editor.innerHTML});
+  };
+});
+document.getElementById("btnClear").onclick=()=>{
+  if(isTeacher){editor.innerHTML="";db.ref('notes').set({content:""});}
+};
+toggleToolbar.onclick=()=>{toolbar.style.display=(toolbar.style.display==="none")?"flex":"none";};
+
+// Chat
+db.ref('chat').on('child_added',snap=>{
+  const msg=snap.val();
+  const div=document.createElement('div');
+  div.innerHTML=`<b>${msg.userName}:</b> ${msg.text}`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop=chatBox.scrollHeight;
+});
+function sendChat(){
+  const input=document.getElementById("chatMessage");
+  const text=input.value.trim();
+  if(text!==""){db.ref('chat').push({user:userRole,userName:userName,text:text});input.value="";}
+}
+document.getElementById("sendChat").onclick=sendChat;
+document.getElementById("chatMessage").addEventListener("keypress",e=>{if(e.key==="Enter") sendChat();});
+clearChatBtn.onclick=()=>{if(isTeacher){db.ref('chat').set(null);chatBox.innerHTML="";}};
+
+// Emoji picker
+const emojiBtn=document.getElementById("emojiBtn");
+const emojiPicker=document.getElementById("emojiPicker");
+const chatMessage=document.getElementById("chatMessage");
+const emojis=["😀","😂","😍","😭","😎","😡","👍","👎","🙏","🔥","🎉","⭐","💯","🍎","📚","✏️","🧮"];
+emojis.forEach(e=>{
+  const btn=document.createElement("button");
+  btn.textContent=e;
+  btn.onclick=()=>{chatMessage.value+=e;emojiPicker.style.display="none";chatMessage.focus();};
+  emojiPicker.appendChild(btn);
+});
+emojiBtn.onclick=()=>{emojiPicker.style.display=(emojiPicker.style.display==="none"?"flex":"none");};
+
+// Reactions
+db.ref('reactions').on('value',snap=>{
+  const counts=snap.val()||{};
+  reactionCounts.innerHTML=Object.entries(counts).map(([emoji,c])=>`${emoji} ${c}`).join(" ");
+});
+document.querySelectorAll("#reactions button").forEach(btn=>{
+  btn.onclick=()=>{
+    const emoji=btn.getAttribute("data-emoji");
+    db.ref('reactions/'+emoji).transaction(c=>(c||0)+1);
+  };
+});
+
+// Raise hand
+raiseHandBtn.onclick=()=>{db.ref('raisedHands/'+userName).set(true);}
+db.ref('raisedHands').on('value',snap=>{
+  const data=snap.val()||{};
+  raisedList.innerHTML=Object.keys(data).join(', ');
+});
+clearHandsBtn.onclick=()=>{if(isTeacher) db.ref('raisedHands').set({});}
+
+// Role modal
+const roleModal=document.getElementById("roleModal");
+document.getElementById("btnTeacher").onclick=()=>{document.getElementById("pwBlock").style.display="block";}
+document.getElementById("btnCancel").onclick=()=>{document.getElementById("pwBlock").style.display="none";}
+document.getElementById("btnEnter").onclick=()=>{
+  const pw=document.getElementById("pwInput").value;
+  if(pw===TEACHER_PASSWORD){
+    isTeacher=true;userRole="Teacher";userName="Teacher";
+    toolbar.style.display="flex"; toggleToolbar.style.display="inline-block";
+    editor.contentEditable="true"; roleModal.style.display="none";
+    chatInput.style.display="flex"; clearChatBtn.style.display="inline-block";
+    clearHandsBtn.style.display="inline-block";
+    editor.innerHTML="<p>Start typing...</p>";
+    db.ref('notes').set({content:editor.innerHTML});
+  } else alert("Wrong password");
+};
+document.getElementById("btnStudent").onclick=()=>{
+  userName=prompt("Enter your name:")||"Student";
+  isTeacher=false;userRole="Student";
+  editor.contentEditable="false";
+  toolbar.style.display="none"; toggleToolbar.style.display="none";
+  roleModal.style.display="none"; chatInput.style.display="flex"; clearChatBtn.style.display="none";
+  clearHandsBtn.style.display="none";
+};
+</script>
+</body>
+</html>
