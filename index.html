@@ -13,6 +13,9 @@
   --accent-dark: #1e40af;
   --shadow: rgba(0,0,0,0.15);
   --input-bg: #e5e7eb;
+  --font-base: 18px;
+  --button-padding: 12px 20px;
+  --border-radius: 12px;
 }
 body.dark {
   --bg: #0f172a;
@@ -31,6 +34,8 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  font-size: var(--font-base);
+  transition: background 0.3s, color 0.3s;
 }
 header {
   display: flex;
@@ -38,8 +43,8 @@ header {
   justify-content: space-between;
   background: var(--accent);
   color: white;
-  padding: 12px 16px;
-  font-size: 1.2em;
+  padding: 16px 20px;
+  font-size: 1.4em;
   box-shadow: 0 2px 6px var(--shadow);
   position: sticky;
   top: 0;
@@ -49,23 +54,24 @@ header {
   margin: auto;
   text-align: center;
   padding: 50px 20px;
-  font-size: 1.1em;
+  font-size: 1.2em;
 }
-#passwordBox { display: none; margin-top: 10px; }
+#passwordBox { display: none; margin-top: 12px; }
 #main {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  gap: 10px;
+  padding: 12px;
+  gap: 12px;
   min-height: 0;
+  scroll-behavior: smooth;
 }
 .post {
-  max-width: 80%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px var(--shadow);
+  max-width: 90%;
+  padding: 14px 16px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 6px var(--shadow);
   position: relative;
   word-wrap: break-word;
   font-size: 1em;
@@ -75,14 +81,14 @@ body.dark .post { background: #1e293b; color: white; }
 body.dark .post.user { background: #334155; }
 .post.admin { border-left: 4px solid var(--accent-dark); background: #fef3c7; margin-right: auto; }
 body.dark .post.admin { background: #78350f; color: white; }
-.timestamp { font-size: 0.7em; opacity: 0.6; margin-top: 2px; }
-.reaction-bar { display: flex; gap: 5px; margin-top: 5px; }
-.reaction-bar button { border: none; background: transparent; cursor: pointer; font-size: 1em; }
+.timestamp { font-size: 0.8em; opacity: 0.6; margin-top: 4px; }
+.reaction-bar { display: flex; gap: 8px; margin-top: 6px; }
+.reaction-bar button { border: none; background: transparent; cursor: pointer; font-size: 1.2em; padding: 4px; }
 #inputBar {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 8px;
+  gap: 8px;
+  padding: 12px;
   background: var(--input-bg);
   position: sticky;
   bottom: 0;
@@ -91,7 +97,7 @@ body.dark .post.admin { background: #78350f; color: white; }
 #postText {
   flex: 1;
   resize: none;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 25px;
   border: none;
   font-size: 1em;
@@ -104,22 +110,23 @@ body.dark #postText { background: #334155; color: white; }
   color: white;
   border: none;
   border-radius: 25px;
-  padding: 8px 16px;
+  padding: var(--button-padding);
   cursor: pointer;
   font-size: 1em;
 }
 #symbolBar {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
 }
 .symbol {
   border: none;
   background: #d1d5db;
-  border-radius: 6px;
-  padding: 4px 8px;
+  border-radius: 8px;
+  padding: 6px 10px;
   cursor: pointer;
   font-weight: bold;
+  font-size: 1em;
 }
 body.dark .symbol { background: #475569; color: white; }
 #menuDropdown {
@@ -127,10 +134,10 @@ body.dark .symbol { background: #475569; color: white; }
   flex-direction: column;
   background: white;
   position: absolute;
-  top: 50px;
+  top: 60px;
   right: 10px;
-  box-shadow: 0 2px 6px var(--shadow);
-  border-radius: 10px;
+  box-shadow: 0 2px 8px var(--shadow);
+  border-radius: var(--border-radius);
   overflow: hidden;
   z-index: 1000;
 }
@@ -138,16 +145,25 @@ body.dark #menuDropdown { background: #1e293b; }
 #menuDropdown button {
   border: none;
   background: none;
-  padding: 10px;
+  padding: 14px 16px;
   text-align: left;
   cursor: pointer;
-  width: 150px;
+  width: 160px;
+  font-size: 1em;
 }
-@media (max-width: 600px) {
+
+/* Responsive adjustments */
+@media (max-width: 800px) {
+  header { font-size: 1.2em; padding: 14px 16px; }
+  #postText { font-size: 0.95em; padding: 10px 14px; }
+  .symbol { font-size: 0.95em; padding: 5px 8px; }
+  #menuDropdown button { width: 140px; padding: 12px 14px; }
+}
+@media (max-width: 500px) {
+  header { font-size: 1em; padding: 12px 14px; }
   #postText { font-size: 0.9em; }
-  .symbol { padding: 3px 6px; font-size: 0.9em; }
-  #menuDropdown button { width: 120px; }
-  header { font-size: 1em; padding: 10px 12px; }
+  .symbol { font-size: 0.9em; }
+  .reaction-bar button { font-size: 1em; }
 }
 </style>
 </head>
@@ -156,8 +172,8 @@ body.dark #menuDropdown { background: #1e293b; }
 <header>
   <h2>Raheim’s Classroom Chat</h2>
   <div>
-    <button id="menuBtn">☰</button>
-    <button id="darkToggle">🌙</button>
+    <button id="menuBtn" aria-label="Menu">☰</button>
+    <button id="darkToggle" aria-label="Toggle Dark Mode">🌙</button>
   </div>
 </header>
 
@@ -191,6 +207,7 @@ body.dark #menuDropdown { background: #1e293b; }
 </div>
 
 <script type="module">
+// Firebase setup (same as your previous code)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove, runTransaction } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
@@ -206,7 +223,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
 let role = null;
 let autoScroll = true;
 const reactionOptions = ["✅","❌","❤️"];
