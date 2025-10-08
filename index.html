@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>📘 Raheim’s Problem Class</title>
+<style>
+:root {
+  --primary: #1e3a8a;
+  --secondary: #3b82f6;
+  --light-bg: #f8fafc;
+  --light-text: #111827;
+  --dark-bg: #0f172a;
+  --dark-text: #f8fafc;
+  --bubble-bg: #e0f2fe;
+  --bubble-admin-bg: #bfdbfe;
+  --shadow: rgba(0, 0, 0, 0.1);
+}
+body {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: var(--light-bg);
+  color: var(--light-text);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+body.dark {
+  background: var(--dark-bg);
+  color: var(--dark-text);
+}
+header {
+  background: var(--primary);
+  color: white;
+  text-align: center;
+  padding: 18px;
+  font-size: 1.8rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px var(--shadow);
+  position: relative;
+}
+#darkToggle {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  background: var(--secondary);
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+#login {
+  text-align: center;
+  padding: 20px;
+}
+#main {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 10px;
+  margin-bottom: 160px;
+}
+.post {
+  max-width: 85%;
+  padding: 10px 14px;
+  margin: 8px 0;
+  border-radius: 15px;
+  box-shadow: 0 2px 6px var(--shadow);
+  background: var(--bubble-bg);
+  word-wrap: break-word;
+}
+.post.admin {
+  align-self: flex-end;
+  background: var(--bubble-admin-bg);
+}
+.timestamp {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 4px;
+  text-align: right;
+}
+.reaction-bar {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.reaction-bar button {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 0.9rem;
+  transition: 0.2s;
+}
+.reaction-bar button:hover {
+  background: #dbeafe;
+}
+#symbolPanel {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 10px;
+  position: fixed;
+  bottom: 60px;
+  width: 100%;
+  background: #f8fafc;
+  z-index: 100;
+}
+body.dark #symbolPanel {
+  background: #1e293b;
+}
+#symbolPanel button {
+  background: #e0f2fe;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+#inputBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  box-shadow: 0 -2px 6px var(--shadow);
+}
+body.dark #inputBar {
+  background: #1e293b;
+}
+#postText {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  padding: 10px 14px;
+  font-size: 1rem;
+  resize: none;
+  max-height: 120px;
+  overflow-y: auto;
+  background: white;
+}
+body.dark #postText {
+  background: #334155;
+  color: white;
+  border-color: #475569;
+}
+#sendBtn, #menuBtn {
+  background: var(--secondary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+#menuDropdown {
+  position: absolute;
+  bottom: 60px;
+  right: 10px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px var(--shadow);
+  display: none;
+  flex-direction: column;
+  min-width: 160px;
+}
+footer {
+  text-align: center;
+  padding: 10px;
+  font-size: 0.9rem;
+  color: #475569;
+}
+</style>
+</head>
+<body>
+<header>
+  📘 Raheim’s Problem Class
+  <button id="darkToggle">🌙</button>
+</header>
+
+<div id="login">
+  <h2>Welcome! Choose your role</h2>
+  <button id="userBtn">User</button>
+  <button id="pryceBtn">Mr. Pryce</button>
+  <div id="passwordBox" style="display:none;margin-top:10px;">
+    <p>Enter password:</p>
+    <input type="password" id="passwordInput" placeholder="Password"><br /><br />
+    <button id="adminLoginBtn">Login</button>
+  </div>
+</div>
+
+<div id="main"></div>
+
+<div id="symbolPanel">
+  <button class="symbol">√</button>
+  <button class="symbol">π</button>
+  <button class="symbol">Δ</button>
+  <button class="symbol">θ</button>
+  <button class="symbol">∑</button>
+  <button class="symbol">∞</button>
+  <button class="symbol">μ</button>
+</div>
+
+<div id="inputBar">
+  <textarea id="postText" placeholder="Type a problem..."></textarea>
+  <button id="sendBtn">➤</button>
+  <button id="menuBtn">⋮</button>
+  <div id="menuDropdown">
+    <button id="downloadBtn">📄 Download All Problems</button>
+    <button id="clearBtn">🧹 Clear All Posts</button>
+  </div>
+</div>
+
+<footer>© 2025 Raheim’s Problem Class</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCjivkTeBcbr-UnnkfMbIYX7_9Wxya5U04",
+  authDomain: "raheim-s-class.firebaseapp.com",
+  databaseURL: "https://raheim-s-class-default-rtdb.firebaseio.com",
+  projectId: "raheim-s-class",
+  storageBucket: "raheim-s-class.appspot.com",
+  messagingSenderId: "576992270609",
+  appId: "1:576992270609:web:7441555f9299b8d42bd4b0"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let role = null;
+let autoScroll = true;
+const reactionOptions = ["✅", "❌", "❤️"];
+
+// 🌙 Dark Mode
+const darkToggle = document.getElementById("darkToggle");
+if (localStorage.getItem("theme") === "dark") {
+  document.body.classList.add("dark");
+  darkToggle.textContent = "☀️";
+}
+darkToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+  const dark = document.body.classList.contains("dark");
+  darkToggle.textContent = dark ? "☀️" : "🌙";
+  localStorage.setItem("theme", dark ? "dark" : "light");
+});
+
+// Role selection
+const userBtn = document.getElementById("userBtn");
+const pryceBtn = document.getElementById("pryceBtn");
+const adminLoginBtn = document.getElementById("adminLoginBtn");
+const passwordBox = document.getElementById("passwordBox");
+
+userBtn.addEventListener("click", () => {
+  role = "User";
+  startApp();
+});
+
+pryceBtn.addEventListener("click", () => {
+  passwordBox.style.display = "block";
+});
+
+adminLoginBtn.addEventListener("click", () => {
+  const pw = document.getElementById("passwordInput").value;
+  if (pw === "madkingpryce") {
+    role = "MrPryce";
+    startApp();
+  } else {
+    alert("Wrong password!");
+  }
+});
+
+function startApp() {
+  document.getElementById("login").style.display = "none";
+  const main = document.getElementById("main");
+  main.style.display = "flex";
+  if (role !== "MrPryce") document.getElementById("menuBtn").style.display = "none";
+  listenPosts();
+}
+
+// Symbol insertion
+document.querySelectorAll(".symbol").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const sym = btn.textContent;
+    const t = document.getElementById("postText");
+    const start = t.selectionStart, end = t.selectionEnd;
+    t.value = t.value.substring(0, start) + sym + t.value.substring(end);
+    t.focus();
+    t.selectionEnd = start + sym.length;
+  });
+});
+
+// Auto-grow text area
+const postText = document.getElementById("postText");
+postText.addEventListener("input", () => {
+  postText.style.height = "auto";
+  postText.style.height = postText.scrollHeight + "px";
+});
+
+// Add post
+document.getElementById("sendBtn").addEventListener("click", () => {
+  const text = postText.value.trim();
+  if (!text) return alert("Type something first!");
+  const post = {
+    text,
+    time: new Date().toLocaleString(),
+    admin: role === "MrPryce",
+  };
+  push(ref(db, "posts"), post);
+  postText.value = "";
+  postText.style.height = "auto";
+});
+
+// Listen for posts
+function listenPosts() {
+  const main = document.getElementById("main");
+  main.addEventListener("scroll", () => {
+    autoScroll = main.scrollTop + main.clientHeight >= main.scrollHeight - 50;
+  });
+
+  onValue(ref(db, "posts"), (snap) => {
+    const posts = [];
+    snap.forEach((c) => posts.push({ key: c.key, ...c.val() }));
+    posts.sort((a, b) => new Date(a.time) - new Date(b.time));
+    main.innerHTML = "";
+    posts.forEach((p) => {
+      const div = document.createElement("div");
+      div.className = "post" + (p.admin ? " admin" : "");
+      div.innerHTML = `
+        <p>${p.text}</p>
+        <div class='timestamp'>${p.time}</div>
+        <div class='reaction-bar'>
+          ${reactionOptions.map(r => `<button data-key="${p.key}" data-emoji="${r}">${r} ${(p.reactions && p.reactions[r]) ? p.reactions[r] : 0}</button>`).join('')}
+        </div>`;
+      main.appendChild(div);
+    });
+    if (autoScroll) main.scrollTop = main.scrollHeight;
+
+    main.querySelectorAll(".reaction-bar button").forEach(btn => {
+      btn.addEventListener("click", () => react(btn.dataset.key, btn.dataset.emoji));
+    });
+  });
+}
+
+// Reactions
+function react(key, emoji) {
+  const postRef = ref(db, "posts/" + key + "/reactions/" + emoji);
+  onValue(postRef, (snap) => {
+    let count = snap.exists() ? snap.val() : 0;
+    count++;
+    update(ref(db, "posts/" + key + "/reactions"), { [emoji]: count });
+  }, { onlyOnce: true });
+}
+
+// Menu toggle
+const menuBtn = document.getElementById("menuBtn");
+const menuDropdown = document.getElementById("menuDropdown");
+menuBtn.addEventListener("click", () => {
+  menuDropdown.style.display = menuDropdown.style.display === "flex" ? "none" : "flex";
+});
+
+// Clear all posts
+document.getElementById("clearBtn").addEventListener("click", () => {
+  if (role !== "MrPryce") return alert("Only Mr. Pryce can clear all.");
+  if (confirm("Delete all posts?")) remove(ref(db, "posts"));
+});
+
+// Download as PDF
+document.getElementById("downloadBtn").addEventListener("click", async () => {
+  const { jsPDF } = window.jspdf;
+  const snap = await new Promise((r) => onValue(ref(db, "posts"), (s) => r(s), { onlyOnce: true }));
+  if (!snap.exists()) return alert("No posts.");
+  const doc = new jsPDF();
+  let y = 15;
+  doc.setFontSize(16);
+  doc.text("Raheim’s Problem Class", 10, y);
+  y += 10;
+  doc.setFontSize(12);
+  const arr = [];
+  snap.forEach((c) => arr.push(c.val()));
+  arr.sort((a, b) => new Date(a.time) - new Date(b.time));
+  for (const p of arr) {
+    if (y > 270) { doc.addPage(); y = 15; }
+    doc.text(`🕒 ${p.time}`, 10, y);
+    y += 6;
+    const lines = doc.splitTextToSize(p.text || "(No text)", 180);
+    doc.text(lines, 10, y);
+    y += lines.length * 6 + 6;
+  }
+  doc.save("Raheims_Problem_Class.pdf");
+});
+</script>
+</body>
+</html>
