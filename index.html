@@ -6,322 +6,395 @@
 <title>Raheim’s Classroom Chat</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
+/* --- CSS Variables & Theming (Mobile-First) --- */
 :root {
-  --bg: #f8fafc;
-  --text: #0f172a;
-  --accent: #2563eb;
-  --accent-dark: #1e40af;
+  --bg: #f0f4f8; 
+  --text: #1f2937;
+  --accent: #10b981; 
+  --accent-dark: #059669;
   --shadow: rgba(0,0,0,0.15);
-  --input-bg: #e5e7eb;
-  --font-base: 18px;
-  --button-padding: 12px 20px;
+  --input-bg: #ffffff;
+  --font-base: 18px; 
   --border-radius: 12px;
 }
 body.dark {
-  --bg: #0f172a;
-  --text: #f8fafc;
-  --accent: #60a5fa;
-  --accent-dark: #2563eb;
+  --bg: #111827;
+  --text: #f3f4f6;
+  --accent: #34d399;
+  --accent-dark: #059669;
   --shadow: rgba(255,255,255,0.1);
-  --input-bg: #1e293b;
+  --input-bg: #1f2937;
 }
+
+/* --- Global Layout --- */
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: var(--bg);
   color: var(--text);
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
   font-size: var(--font-base);
   transition: background 0.3s, color 0.3s;
+  overflow: hidden; /* Prevents scrollbars on body */
 }
+
+/* --- Header --- */
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--accent);
   color: white;
-  padding: 16px 20px;
-  font-size: 1.4em;
-  box-shadow: 0 2px 6px var(--shadow);
+  padding: 14px 16px;
+  font-size: 1.3em;
+  box-shadow: 0 2px 8px var(--shadow);
   position: sticky;
   top: 0;
   z-index: 100;
 }
+header button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.4em;
+  cursor: pointer;
+  padding: 5px;
+  margin-left: 8px;
+}
+
+/* --- Login --- */
 #login {
   margin: auto;
   text-align: center;
-  padding: 50px 20px;
-  font-size: 1.2em;
+  padding: 30px 15px;
+  max-width: 360px;
+  border-radius: var(--border-radius);
+  background: var(--input-bg);
+  box-shadow: 0 4px 12px var(--shadow);
 }
-#passwordBox { display: none; margin-top: 12px; }
+#login button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  margin: 8px 4px;
+  font-size: 1em;
+  transition: background 0.2s;
+}
+#login button:hover { background: var(--accent-dark); }
+#passwordBox { display: none; margin-top: 15px; flex-direction: column; gap: 10px; }
+#passwordInput { padding: 10px; border-radius: var(--border-radius); border: 1px solid #ccc; background: var(--bg); color: var(--text); font-size: 1em; }
+#adminLoginBtn { width: 100%; }
+
+/* --- Main Chat Area (Scrollable) --- */
 #main {
-  flex: 1;
+  flex: 1; /* Takes all available vertical space */
   overflow-y: auto;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  padding: 12px;
-  gap: 12px;
-  min-height: 0;
+  gap: 15px;
   scroll-behavior: smooth;
+  min-height: 0; /* Ensures flex container can shrink */
 }
 .post {
   max-width: 90%;
   padding: 14px 16px;
   border-radius: var(--border-radius);
-  box-shadow: 0 2px 6px var(--shadow);
-  position: relative;
+  box-shadow: 0 1px 4px var(--shadow);
   word-wrap: break-word;
-  font-size: 1em;
 }
-body.dark .post { background: #1e293b; color: white; }
-.post.user { background: #e5e7eb; margin-left: auto; }
-body.dark .post.user { background: #334155; }
-.post.admin { border-left: 4px solid var(--accent-dark); background: #fef3c7; margin-right: auto; }
-body.dark .post.admin { background: #78350f; color: white; }
-.timestamp { font-size: 0.8em; opacity: 0.6; margin-top: 4px; }
-.reaction-bar { display: flex; gap: 8px; margin-top: 6px; }
-.reaction-bar button { border: none; background: transparent; cursor: pointer; font-size: 1.2em; padding: 4px; }
-#inputBar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  background: var(--input-bg);
-  position: sticky;
-  bottom: 0;
-  z-index: 50;
+.post.user { background: #d1e7dd; margin-left: auto; border-bottom-right-radius: 4px; }
+body.dark .post.user { background: #1e3a8a; color: #eff6ff; }
+.post.admin { border-left: 5px solid var(--accent-dark); background: #fffbe6; margin-right: auto; border-bottom-left-radius: 4px; }
+body.dark .post.admin { background: #451a03; color: white; }
+.post-header { font-weight: bold; font-size: 0.9em; color: #059669; margin-bottom: 2px;}
+body.dark .post-header { color: #34d399; }
+.timestamp { font-size: 0.75em; opacity: 0.7; margin-top: 4px; text-align: right; }
+.reaction-bar { display: flex; gap: 10px; margin-top: 8px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 6px; }
+body.dark .reaction-bar { border-top: 1px solid rgba(255,255,255,0.1); }
+.reaction-bar button { 
+  border: none; background: none; cursor: pointer; font-size: 1.2em; 
+  padding: 6px 10px; border-radius: 15px; color: var(--text); 
+  transition: transform 0.1s; 
 }
-#postText {
-  flex: 1;
-  resize: none;
-  padding: 12px 16px;
-  border-radius: 25px;
-  border: none;
-  font-size: 1em;
-  outline: none;
-  background: white;
+.reaction-bar button:active { transform: scale(1.2); }
+
+/* --- Input Bar (Sticky) --- */
+#inputBar { 
+  display: flex; flex-direction: column; gap: 8px; padding: 12px; 
+  background: var(--bg); box-shadow: 0 -2px 8px var(--shadow); 
+  position: sticky; bottom: 0; z-index: 50; 
 }
-body.dark #postText { background: #334155; color: white; }
-#sendBtn {
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 25px;
-  padding: var(--button-padding);
-  cursor: pointer;
-  font-size: 1em;
+#symbolBar { 
+  display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; 
+  padding-bottom: 5px; 
 }
-#symbolBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.symbol { 
+  flex-shrink: 0; border: none; background: var(--input-bg); 
+  border-radius: 8px; padding: 6px 12px; cursor: pointer; 
+  font-weight: bold; font-size: 1em; box-shadow: 0 1px 3px var(--shadow); 
 }
-.symbol {
-  border: none;
-  background: #d1d5db;
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1em;
+.text-send-group { display: flex; align-items: flex-end; gap: 8px; }
+#postText { 
+  flex: 1; max-height: 100px; overflow-y: auto; resize: none; 
+  padding: 12px 18px; border-radius: 25px; border: 1px solid #ccc; 
+  font-size: 1em; outline: none; background: var(--input-bg); color: var(--text); 
 }
-body.dark .symbol { background: #475569; color: white; }
-#menuDropdown {
-  display: none;
-  flex-direction: column;
-  background: white;
-  position: absolute;
-  top: 60px;
-  right: 10px;
-  box-shadow: 0 2px 8px var(--shadow);
-  border-radius: var(--border-radius);
-  overflow: hidden;
-  z-index: 1000;
+#sendBtn { 
+  background: var(--accent); color: white; border: none; 
+  border-radius: 25px; padding: 12px 20px; cursor: pointer; 
+  font-size: 1em; height: fit-content; 
 }
-body.dark #menuDropdown { background: #1e293b; }
-#menuDropdown button {
-  border: none;
-  background: none;
-  padding: 14px 16px;
-  text-align: left;
-  cursor: pointer;
-  width: 160px;
-  font-size: 1em;
+#sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* --- Menu Dropdown --- */
+#menuDropdown { 
+  display: none; flex-direction: column; background: var(--input-bg); 
+  position: absolute; top: 60px; right: 10px; box-shadow: 0 4px 12px var(--shadow); 
+  border-radius: var(--border-radius); overflow: hidden; z-index: 1000; 
+  min-width: 180px; 
+}
+#menuDropdown button { 
+  border: none; background: none; color: var(--text); padding: 14px 16px; 
+  text-align: left; cursor: pointer; font-size: 1em; 
 }
 
-/* Responsive adjustments */
-@media (max-width: 800px) {
-  header { font-size: 1.2em; padding: 14px 16px; }
-  #postText { font-size: 0.95em; padding: 10px 14px; }
-  .symbol { font-size: 0.95em; padding: 5px 8px; }
-  #menuDropdown button { width: 140px; padding: 12px 14px; }
-}
-@media (max-width: 500px) {
-  header { font-size: 1em; padding: 12px 14px; }
-  #postText { font-size: 0.9em; }
-  .symbol { font-size: 0.9em; }
-  .reaction-bar button { font-size: 1em; }
+/* --- Responsive Adjustments --- */
+@media (max-width: 600px) {
+  :root { --font-base: 16px; }
+  #main { padding: 10px; gap: 10px; }
+  #inputBar { padding: 10px; }
+  #sendBtn { padding: 10px 16px; }
+  .reaction-bar button { font-size: 1.4em; padding: 8px 12px; }
 }
 </style>
 </head>
 <body>
 
 <header>
-  <h2>Raheim’s Classroom Chat</h2>
-  <div>
-    <button id="menuBtn" aria-label="Menu">☰</button>
-    <button id="darkToggle" aria-label="Toggle Dark Mode">🌙</button>
-  </div>
+  <h2>Raheim’s Classroom Chat</h2>
+  <div>
+    <button id="menuBtn" aria-label="Menu" style="display:none;">&#9776;</button>
+    <button id="darkToggle" aria-label="Toggle Dark Mode">🌙</button>
+  </div>
 </header>
 
 <div id="login">
-  <h3>Sign in</h3>
-  <button id="userBtn">User</button>
-  <button id="pryceBtn">Mr. Pryce</button>
-  <div id="passwordBox">
-    <input type="password" id="passwordInput" placeholder="Password" />
-    <button id="adminLoginBtn">Login</button>
-  </div>
+  <h3>Sign in</h3>
+  <div>
+    <button id="userBtn">Student (User)</button>
+    <button id="pryceBtn">Mr. Pryce (Admin)</button>
+  </div>
+  <div id="passwordBox">
+    <input type="password" id="passwordInput" placeholder="Admin Password" /> 
+    <button id="adminLoginBtn">Login</button>
+  </div>
 </div>
 
-<div id="main" style="display:none;"></div>
+<div id="main" style="display:none;" aria-live="polite"></div>
 
-<div id="inputBar">
-  <div id="symbolBar">
-    <button class="symbol">√</button>
-    <button class="symbol">π</button>
-    <button class="symbol">θ</button>
-    <button class="symbol">Δ</button>
-    <button class="symbol">∞</button>
-  </div>
-  <textarea id="postText" rows="1" placeholder="Type your problem, question, or homework..."></textarea>
-  <button id="sendBtn">Send</button>
+<div id="inputBar" style="display:none;"> 
+  <div id="symbolBar">
+    <button class="symbol">√</button>
+    <button class="symbol">π</button>
+    <button class="symbol">θ</button>
+    <button class="symbol">Δ</button>
+    <button class="symbol">∞</button>
+    <button class="symbol">∫</button>
+    <button class="symbol">±</button>
+    <button class="symbol">≠</button>
+    <button class="symbol">≈</button>
+  </div>
+  <div class="text-send-group">
+    <textarea id="postText" rows="1" placeholder="Type your problem, question, or homework..." maxlength="500"></textarea>
+    <button id="sendBtn">Send</button>
+  </div>
 </div>
 
 <div id="menuDropdown">
-  <button id="downloadBtn">📄 Download PDF</button>
-  <button id="clearBtn">🗑️ Clear All</button>
+  <button id="downloadBtn">📄 Download PDF</button>
+  <button id="clearBtn">🗑️ Clear All</button>
 </div>
 
 <script type="module">
-// Firebase setup (same as your previous code)
+// --- Firebase Setup ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove, runTransaction } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCjivkTeBcbr-UnnkfMbIYX7_9Wxya5U04",
-  authDomain: "raheim-s-class.firebaseapp.com",
-  databaseURL: "https://raheim-s-class-default-rtdb.firebaseio.com",
-  projectId: "raheim-s-class",
-  storageBucket: "raheim-s-class.appspot.com",
-  messagingSenderId: "576992270609",
-  appId: "1:576992270609:web:7441555f9299b8d42bd4b0"
+  apiKey: "AIzaSyCjivkTeBcbr-UnnkfMbIYX7_9Wxya5U04",
+  authDomain: "raheim-s-class.firebaseapp.com",
+  databaseURL: "https://raheim-s-class-default-rtdb.firebaseio.com",
+  projectId: "raheim-s-class",
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
 let role = null;
+let userName = "Guest"; 
+const ADMIN_PASSWORD = "madkingpryce"; 
 let autoScroll = true;
 const reactionOptions = ["✅","❌","❤️"];
 
-// Dark mode
+// --- DOM Elements ---
+const main = document.getElementById("main");
+const login = document.getElementById("login");
+const postText = document.getElementById("postText");
+const sendBtn = document.getElementById("sendBtn");
+const inputBar = document.getElementById("inputBar");
+const menuBtn = document.getElementById("menuBtn");
+const menuDropdown = document.getElementById("menuDropdown");
 const darkToggle = document.getElementById("darkToggle");
+
+// --- Utility Functions ---
+
+// Handles mobile keyboard/viewport size changes to keep the chat visible
+function adjustMainHeight(){
+  // Use visualViewport for reliable height detection on mobile with keyboard
+  const availableHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const headerHeight = document.querySelector('header').offsetHeight;
+  const inputBarHeight = inputBar.offsetHeight;
+  const vh = availableHeight - headerHeight - inputBarHeight;
+  main.style.height=`${vh}px`;
+}
+
+// Auto-Grow Textarea
+function autoGrowTextarea(){ 
+  postText.style.height="auto"; 
+  postText.style.height=Math.min(postText.scrollHeight,100)+"px";
+  // Call height adjustment after input bar potentially changes size
+  adjustMainHeight();
+}
+
+// --- Event Listeners ---
+
+// Dark Mode
 if(localStorage.getItem("theme")==="dark"){document.body.classList.add("dark"); darkToggle.textContent="☀️";}
 darkToggle.addEventListener("click",()=>{
-  document.body.classList.toggle("dark");
-  darkToggle.textContent=document.body.classList.contains("dark")?"☀️":"🌙";
-  localStorage.setItem("theme",document.body.classList.contains("dark")?"dark":"light");
+  document.body.classList.toggle("dark");
+  darkToggle.textContent=document.body.classList.contains("dark")?"☀️":"🌙";
+  localStorage.setItem("theme",document.body.classList.contains("dark")?"dark":"light");
 });
 
-// Role selection
-document.getElementById("userBtn").addEventListener("click",()=>{role="User"; startApp();});
-document.getElementById("pryceBtn").addEventListener("click",()=>{document.getElementById("passwordBox").style.display="block";});
-document.getElementById("adminLoginBtn").addEventListener("click",()=>{
-  if(document.getElementById("passwordInput").value==="madkingpryce"){role="MrPryce"; startApp();}else{alert("Wrong password!");}
-});
+// Login / Role Selection
+document.getElementById("userBtn").addEventListener("click",()=>{role="User"; userName="Student"; startApp();});
+document.getElementById("pryceBtn").addEventListener("click",()=>{const pb=document.getElementById("passwordBox"); pb.style.display=pb.style.display==="flex"?"none":"flex";});
+document.getElementById("adminLoginBtn").addEventListener("click",()=>{if(document.getElementById("passwordInput").value===ADMIN_PASSWORD){role="MrPryce"; userName="Mr. Pryce"; startApp();}else{alert("Wrong password!"); document.getElementById("passwordInput").value="";}});
 
-function startApp(){
-  document.getElementById("login").style.display="none";
-  const main=document.getElementById("main");
-  main.style.display="flex"; main.style.flexDirection="column";
-  if(role!=="MrPryce") document.getElementById("menuBtn").style.display="none";
-  listenPosts();
-}
+// Textarea Behavior
+postText.addEventListener("input", autoGrowTextarea);
+postText.addEventListener("keydown",(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault(); sendBtn.click();}});
 
-// Symbols
+// Insert symbols
 document.querySelectorAll(".symbol").forEach(btn=>btn.addEventListener("click",()=>{
-  const t=document.getElementById("postText"); const s=t.selectionStart; const e=t.selectionEnd; 
-  t.value=t.value.substring(0,s)+btn.textContent+t.value.substring(e); t.focus(); t.selectionEnd=s+btn.textContent.length;
+  const t=postText; const s=t.selectionStart; const e=t.selectionEnd; const symbol=btn.textContent;
+  t.value=t.value.substring(0,s)+symbol+t.value.substring(e); t.focus(); t.selectionEnd=s+symbol.length;
+  autoGrowTextarea();
 }));
 
-// Auto-grow & Enter key
-const postText=document.getElementById("postText");
-postText.addEventListener("input",()=>{postText.style.height="auto"; postText.style.height=postText.scrollHeight+"px";});
-postText.addEventListener("keydown", (e)=>{
-  if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); document.getElementById("sendBtn").click(); }
+// Send post
+sendBtn.addEventListener("click",()=>{
+  const text=postText.value.trim();
+  if(!text||sendBtn.disabled)return alert("Please type a message.");
+  sendBtn.disabled=true;
+  const post={text: text,time:new Date().toLocaleString(),sender:userName,role:role};
+  push(ref(db,"posts"),post).then(()=>{postText.value=""; autoGrowTextarea(); sendBtn.disabled=false;}).catch(err=>{alert("Error sending: "+err.message); sendBtn.disabled=false;});
 });
 
-// Add post
-document.getElementById("sendBtn").addEventListener("click",()=>{
-  const text=postText.value.trim(); if(!text) return alert("Type something first!");
-  const post={text,time:new Date().toLocaleString(),admin:role==="MrPryce",user:role==="User"};
-  push(ref(db,"posts"),post); postText.value=""; postText.style.height="auto";
-});
+// Admin menu toggle
+menuBtn.addEventListener("click",()=>{menuDropdown.style.display=menuDropdown.style.display==="flex"?"none":"flex";});
+document.addEventListener("click",e=>{if(menuDropdown.style.display==="flex"&&!menuDropdown.contains(e.target)&&e.target!==menuBtn){menuDropdown.style.display="none";}});
 
-// Listen posts
-function listenPosts(){
-  const main=document.getElementById("main");
-  main.addEventListener("scroll",()=>{autoScroll=main.scrollTop+main.clientHeight>=main.scrollHeight-50;});
-  onValue(ref(db,"posts"),snap=>{
-    const posts=[]; snap.forEach(c=>posts.push({key:c.key,...c.val()}));
-    posts.sort((a,b)=>new Date(a.time)-new Date(b.time));
-    main.innerHTML="";
-    posts.forEach(p=>{
-      const div=document.createElement("div");
-      let cls="post "+(p.admin?"admin":"user");
-      div.className=cls;
-      div.innerHTML=`<p>${p.text}</p>
-        <div class='timestamp'>${p.time}</div>
-        <div class='reaction-bar'>
-        ${reactionOptions.map(r=>`<button data-key="${p.key}" data-emoji="${r}">${r} ${(p.reactions&&p.reactions[r])?p.reactions[r]:0}</button>`).join('')}
-        </div>`;
-      main.appendChild(div);
-    });
-    if(autoScroll) main.scrollTop=main.scrollHeight;
-    main.querySelectorAll(".reaction-bar button").forEach(btn=>btn.addEventListener("click",()=>runTransaction(ref(db,"posts/"+btn.dataset.key+"/reactions/"+btn.dataset.emoji),v=>(v||0)+1)));
-  });
+// --- Core Application Logic ---
+
+function startApp(){
+  login.style.display="none";
+  main.style.display="flex"; 
+  inputBar.style.display="flex";
+  
+  if(role==="MrPryce"){menuBtn.style.display="block";}else{menuBtn.style.display="none";}
+  
+  // Initialize height adjustment and listen for changes
+  adjustMainHeight();
+  window.addEventListener('resize', adjustMainHeight);
+  if(window.visualViewport){ window.visualViewport.addEventListener('resize', adjustMainHeight); }
+
+  listenPosts();
 }
 
-// Menu
-const menuBtn=document.getElementById("menuBtn");
-const menuDropdown=document.getElementById("menuDropdown");
-menuBtn.addEventListener("click",()=>{menuDropdown.style.display=menuDropdown.style.display==="flex"?"none":"flex";});
-document.addEventListener("click",e=>{if(!menuDropdown.contains(e.target)&&e.target!==menuBtn) menuDropdown.style.display="none";});
+// Listen posts (Real-Time Update)
+function listenPosts(){
+  main.addEventListener("scroll",()=>{autoScroll=main.scrollTop+main.clientHeight>=main.scrollHeight-100;});
+  onValue(ref(db,"posts"),snap=>{
+    const posts=[]; snap.forEach(c=>posts.push({key:c.key,...c.val()})); 
+    posts.sort((a,b)=>new Date(a.time)-new Date(b.time));
+    main.innerHTML="";
+    
+    posts.forEach(p=>{
+      const div=document.createElement("div");
+      const postClass=p.role==="MrPryce"?"admin":"user"; div.className=`post ${postClass}`;
+      div.innerHTML=`
+      <div class="post-header"><span class="sender">${p.sender||'Unknown'}</span></div>
+      <p>${p.text}</p>
+      <div class='reaction-bar'>
+      ${reactionOptions.map(r=>`<button data-key="${p.key}" data-emoji="${r}" aria-label="React with ${r}">${r} <span class="reaction-count">${(p.reactions&&p.reactions[r])?p.reactions[r]:0}</span></button>`).join('')}
+      </div>
+      <div class='timestamp'>${p.time}</div>`;
+      main.appendChild(div);
+    });
+    
+    if(autoScroll) main.scrollTop=main.scrollHeight;
+    
+    // Attach listeners for reactions
+    main.querySelectorAll(".reaction-bar button").forEach(btn=>btn.addEventListener("click",()=>runTransaction(ref(db,"posts/"+btn.dataset.key+"/reactions/"+btn.dataset.emoji),v=>(v||0)+1)));
+  });
+}
+
+// Admin Functions
 
 // Clear posts
 document.getElementById("clearBtn").addEventListener("click",()=>{
-  if(role!=="MrPryce") return alert("Only Mr. Pryce can clear all.");
-  if(confirm("Delete all posts?")) remove(ref(db,"posts"));
+  if(role!=="MrPryce")return alert("Only Mr. Pryce can clear all.");
+  if(confirm("Are you SURE you want to delete ALL posts? This action cannot be undone.")) {
+    remove(ref(db,"posts")).then(()=>{
+      alert("All posts cleared.");
+      menuDropdown.style.display="none";
+    }).catch(err => alert("Error clearing posts: " + err.message));
+  }
 });
 
 // PDF download
 document.getElementById("downloadBtn").addEventListener("click",async()=>{
-  const { jsPDF }=window.jspdf;
-  const snap=await new Promise(r=>onValue(ref(db,"posts"),s=>r(s),{onlyOnce:true}));
-  if(!snap.exists()) return alert("No posts.");
-  const doc=new jsPDF(); let y=15;
-  doc.setFontSize(16); doc.text("Raheim’s Classroom Chat",10,y); y+=10; doc.setFontSize(12);
-  const arr=[]; snap.forEach(c=>arr.push(c.val())); arr.sort((a,b)=>new Date(a.time)-new Date(b.time));
-  for(const p of arr){
-    if(y>270){doc.addPage(); y=15;}
-    doc.text(`🕒 ${p.time}`,10,y); y+=6;
-    const lines=doc.splitTextToSize(p.text||"(No text)",180);
-    doc.text(lines,10,y); y+=lines.length*6+6;
-  }
-  doc.save("Raheims_Classroom_Chat.pdf");
+  const { jsPDF }=window.jspdf;
+  const snap=await new Promise(r=>onValue(ref(db,"posts"),s=>r(s),{onlyOnce:true}));
+  if(!snap.exists()) return alert("No posts to download.");
+  
+  const doc=new jsPDF('p','mm','a4'); let y=15; doc.setFontSize(18); doc.text("Raheim’s Classroom Chat Transcript",10,y); y+=18;
+  const arr=[]; snap.forEach(c=>arr.push(c.val())); arr.sort((a,b)=>new Date(a.time)-new Date(b.time));
+  doc.setFontSize(10); const maxWidth=180; const lineHeight=5;
+  
+  for(const p of arr){
+    if(y>270){doc.addPage(); y=15;}
+    const sender=p.sender||'Unknown'; const postTime=p.time; const textContent=p.text||"(No text)";
+    
+    // Header (Sender and Time)
+    doc.setFont('helvetica','bold'); doc.text(`${sender}:`,10,y);
+    doc.setFont('helvetica','normal'); doc.text(`( ${postTime} )`,doc.getTextWidth(`${sender}:`)+12,y); y+=4;
+    
+    // Content
+    const lines=doc.splitTextToSize(textContent,maxWidth);
+    doc.text(lines,10,y); y+=lines.length*lineHeight+5;
+    
+    // Separator
+    doc.line(10,y,190,y); y+=5;
+  }
+  doc.save("Raheims_Classroom_Chat_Transcript.pdf");
+  menuDropdown.style.display="none";
 });
 </script>
 </body>
